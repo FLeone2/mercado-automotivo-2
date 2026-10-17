@@ -19,5 +19,5 @@ const j={available:true,segmentFields:['bd_classe','segmento'],rows:[{values:['S
 const mix=catalogAdapt({...c,current:{...current,joints:{segmentBrandModel:j}}},'marimekko');assert.notEqual(mix.rows[0].segment,mix.rows[1].segment);assert.equal(mix.rows.reduce((s,r)=>s+r.value,0),100);
 assert(catalogAdapt({...c,current:{...current,joints:{modelChannelRegion:{available:false,reason:'capacity'}}}},'sankey').reason==='capacity');
 const html=fs.readFileSync('index.html','utf8');assert(html.includes("includeCatalog=['catalog','primary-map'].includes(mode)"));assert(html.includes('includeMitsubishiProfile,includeCatalog}'));assert(html.includes('key:tab,tab,filters:effectiveFilters'));assert(html.includes("open&&jsxRuntime.jsx(CatalogLive,props)"));
-assert.equal(html.match(/\/\/ BEGIN ADDITIVE CATALOG/g)?.length,1);assert.equal(html.match(/\/\* BEGIN CATALOG THEMES \*\//g)?.length,1);
+assert.equal(html.match(/\/\/ BEGIN ADDITIVE CATALOG/g)?.length,1);assert.equal(html.match(/\/\* BEGIN THEME REGISTRY \*\//g)?.length,1);
 console.log('PASS: additive/lazy integration, 13 formats, percent units, missing periods, exact composition and common Pareto universe.');

@@ -1,4 +1,60 @@
-# Mercado automotivo
+# Mercado Automotivo 2
+
+Painel do mercado brasileiro de emplacamentos (automóveis + comerciais leves), publicado no Cloudflare Pages.
+Esta é a versão reformulada. O repositório original (`mercado-automotivo`) segue intocado.
+
+## Regra principal
+
+Este repositório é a fonte do painel. **Não suba um `index.html` exportado do Codex/ChatGPT aqui:** ele apagaria as mudanças. Peça novas alterações direto neste repositório.
+
+## Publicação
+
+O Cloudflare Pages publica só a pasta `dist/`. Código, scripts, testes, documentação e arquivos-fonte brutos não ficam públicos.
+
+| Configuração no Cloudflare Pages | Valor |
+|---|---|
+| Build command | `bash scripts/build-dist.sh` |
+| Build output directory | `dist` |
+
+Para testar localmente:
+
+```sh
+bash scripts/build-dist.sh
+cd dist && python3 -m http.server 8765
+```
+
+## Tema e design system
+
+- **Um tema só**, com três cores de destaque (Petróleo, que é o padrão, Verde oliva e Azul marinho), cada uma em claro e escuro, mais o modo **Apresentação** (escuro).
+- `src/theme-registry.js`: tokens de cada cor e paleta dos gráficos (validada para daltonismo).
+- `src/design-system.css`: a camada visual única (superfícies planas, navegação, controles, tipografia, movimento). É sempre a última folha de estilo.
+- Fonte Geist hospedada em `assets/fonts/` (licença OFL).
+- Vermelho é exclusivo da Mitsubishi; queda usa laranja.
+
+Depois de editar esses arquivos:
+
+```sh
+python3 scripts/build-design-system.py   # sempre por último, depois de qualquer outro build-*.py
+node tests/theme-registry.test.cjs
+```
+
+O script também aplica três ajustes no runtime: tema salvo inexistente volta ao padrão em vez de travar o app; exportação de imagem usa Petróleo; e as cores dos gráficos seguem a paleta (antes o runtime girava o matiz da primeira cor e gerava tons aleatórios).
+
+## Testes
+
+```sh
+for t in tests/*.cjs; do node "$t" || echo "FALHOU: $t"; done
+```
+
+`compact-navigation`, `header-gap` e `navigation` dependem de commits do histórico local do Codex que não existem no GitHub e falham desde antes da reformulação.
+
+## Documentação histórica
+
+Os relatórios e manifestos dos pacotes anteriores estão em `docs/historico/`.
+
+---
+
+## Notas técnicas herdadas
 
 Static dashboard published by the existing GitHub → Cloudflare Pages integration.
 `index.html` contains the reviewed snapshot, bundled runtime and authored application.
