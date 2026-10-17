@@ -24,7 +24,7 @@ function ScenarioNote({children,...props}){
  return scenarioH(jsxRuntime.Fragment,{},[plan.summary?scenarioH('p',{...props,className:'am-footnote am-scenario-context'},plan.summary):null,scenarioH(ScenarioFooterBlock,{title:'Notas de leitura',reference:false},scenarioH('p',{},plan.text))]);
 }
 // Source-backed, lazy-loaded Cenários. No remote libraries or invented analytical rows.
-const SCENARIO_TABS=[{value:'diagnostic',label:'Diagnóstico'},{value:'economy',label:'Economia e mercado'},{value:'regional',label:'Potencial regional'},{value:'forecasts',label:'Previsões'},{value:'simulations',label:'Simulações'}];
+const SCENARIO_TABS=[{value:'context',label:'Contexto econômico'},{value:'diagnostic',label:'Diagnóstico'},{value:'economy',label:'Economia e mercado'},{value:'regional',label:'Potencial regional'},{value:'forecasts',label:'Previsões'},{value:'simulations',label:'Simulações'}];
 const scenarioNumber=(value,digits=0)=>value==null||!Number.isFinite(Number(value))?'Indisponível':Number(value).toLocaleString('pt-BR',{maximumFractionDigits:digits});
 const scenarioPercent=value=>value==null?'Indisponível':scenarioNumber(value*100,2)+'%';
 function scenarioPeriod(data){return (data?.period??data?.input?.period??[data?.coverageStart??data?.coverage?.start??data?.sourceAudit?.coverageStart,data?.coverageEnd??data?.coverage?.end??data?.sourceAudit?.coverageEnd]).filter(Boolean).map(monthLabel).join(' – ')||'Referências específicas por fonte';}
@@ -83,7 +83,8 @@ function ScenarioForecastFan({model,history,title}){const rows=model.intervals??
 }
 function ScenarioForecastsHistorical({base}){const forecasts=useScenarioFile('forecasts.json',base),monthly=useScenarioFile('monthly.json',base),[series,setSeries]=React.useState('registrations');return jsxRuntime.jsx(ScenarioLoad,{state:forecasts,children:data=>{const model=data.models?.[series],metrics=model?scenarioForecastMetrics(model):[],best=Math.min(...metrics.map(r=>r.mae)),selected=metrics.find(r=>r.selected==='Selecionado na validação'),failed=model?.validationPassed===false||!selected||selected.mae>best;return jsxRuntime.jsxs(jsxRuntime.Fragment,{children:[jsxRuntime.jsx(ScenarioProvenance,{data}),jsxRuntime.jsx(dataApp.SegmentedControl,{value:series,onChange:setSeries,options:Object.keys(data.models??{}).map(key=>({value:key,label:key==='mitsubishi'?'Mitsubishi':'Mercado'}))}),!model?jsxRuntime.jsx(ScenarioUnavailable,{title:'Modelo indisponível',reason:'Não há resultado revisado para esta série.'}):jsxRuntime.jsxs(jsxRuntime.Fragment,{children:[jsxRuntime.jsx('div',{className:'am-scope-alert',role:'status',children:failed?'Validação insuficiente: o modelo selecionado não superou a melhor referência no teste reservado. Projeções abaixo são experimentais, não sustentam metas ou decisões comerciais.':'Projeções experimentais. O desempenho retrospectivo não garante precisão futura; confira erros e cobertura das faixas.'}),jsxRuntime.jsx(ScenarioLoad,{state:monthly,children:observed=>jsxRuntime.jsx(ScenarioForecastFan,{model,history:observed.rows.map(r=>({month:r.month,value:r[series]})),title:'Histórico e projeção experimental · '+(series==='mitsubishi'?'Mitsubishi':'mercado')})}),jsxRuntime.jsx(ScenarioNote,{className:'am-footnote',children:'Seleção: '+(scenarioModelLabels[model.selectedModel]??model.selectedModel)+' na validação '+(model.validationTargetRange??[]).join(' – ')+'. Teste reservado: '+(model.testTargetRange??[]).join(' – ')+'. Treino final até '+model.trainedThrough+'. A base foi revisada retrospectivamente; versões históricas de publicação indisponíveis.'}),jsxRuntime.jsx('p',{className:'am-scope-alert',children:'Cobertura no teste: faixa 80% nominal cobriu '+scenarioPercent(model.testIntervalCoverage?.['80'])+'; faixa 95% nominal cobriu '+scenarioPercent(model.testIntervalCoverage?.['95'])+'. Quantis empíricos de resíduos por horizonte; autocorrelação e mudanças estruturais impedem garantia de cobertura.'}),jsxRuntime.jsx(ScenarioTable,{id:'scenarios-forecast-test',title:'Comparação no teste reservado · menor erro é melhor',rows:metrics,columns:[column('model','Modelo'),column('selected','Seleção'),column('mae','MAE · registros'),column('mase','MASE'),column('n','Previsões avaliadas')]}),jsxRuntime.jsx(ScenarioTable,{id:'scenarios-forecast-bounds',title:'Pontos e limites empíricos da projeção',rows:model.intervals??[],columns:[column('month','Mês'),column('point','Ponto'),column('lo80','Limite inferior 80%'),column('hi80','Limite superior 80%'),column('lo95','Limite inferior 95%'),column('hi95','Limite superior 95%'),column('calibrationN','Resíduos de calibração')]}),jsxRuntime.jsx(ScenarioExport,{name:'previsao-experimental-'+series,rows:model.intervals??[],data})]})]});}});}
 function ScenarioSimulations({base}){const state=useScenarioFile('macro_analysis.json',base);return jsxRuntime.jsx(ScenarioLoad,{state,children:data=>jsxRuntime.jsxs(jsxRuntime.Fragment,{children:[jsxRuntime.jsx(ScenarioProvenance,{data}),jsxRuntime.jsx(ScenarioUnavailable,{title:'Superfície de resposta de dois fatores',reason:'Não há modelo exógeno de dois fatores validado neste pacote. Uma superfície 3D ou controles de juros/crédito sugeririam impactos que os dados ainda não sustentam. As correlações descritivas não são usadas como coeficientes causais.'}),jsxRuntime.jsx(ScenarioNote,{className:'am-footnote',children:'Os cenários ilustrativos de eletrificação existentes continuam acessíveis em “Análises anteriores e cenários congelados”, abaixo, com suas hipóteses explícitas.'})]})});}
-function ScenarioWorkspace(props){const shell=dataApp.useDataApp(),saved=shell.sectionViews?.['models:scenarios-workspace']??{},tab=SCENARIO_TABS.some(t=>t.value===saved.tab)?saved.tab:'diagnostic',[legacy,setLegacy]=React.useState(false),manifest=useScenarioFile('manifest.json',props.base);
+function ScenarioWorkspace(props){const shell=dataApp.useDataApp(),saved=shell.sectionViews?.['models:scenarios-workspace']??{},tab=SCENARIO_TABS.some(t=>t.value===saved.tab)?saved.tab:'context',[legacy,setLegacy]=React.useState(false),manifest=useScenarioFile('manifest.json',props.base);
+ if(tab==='context')return jsxRuntime.jsx(ScenarioNotesLayout,{scope:tab,children:jsxRuntime.jsx(ScenarioContext,{base:props.base,onTechnical:view=>shell.setSectionView?.('models:scenarios-workspace',{...saved,tab:view})})});
  const content={diagnostic:ScenarioDiagnostic,economy:ScenarioEconomy,regional:ScenarioRegional,forecasts:ScenarioForecasts,simulations:ScenarioSimulations}[tab];
  return jsxRuntime.jsx(ScenarioNotesLayout,{scope:tab,children:jsxRuntime.jsxs('div',{className:'am-scenarios',children:[jsxRuntime.jsx('h2',{children:'Cenários'}),jsxRuntime.jsx('p',{className:'am-scenario-intro',children:'Histórico, contexto econômico e hipóteses com cobertura e limites explícitos.'}),jsxRuntime.jsx('p',{className:'am-scope-alert',children:'Base fixa · filtros globais não alteram esta análise.'}),jsxRuntime.jsx(ScenarioFooterBlock,{title:'Escopo e filtros',reference:false,children:jsxRuntime.jsxs('div',{className:'am-scope-alert',children:[jsxRuntime.jsx('strong',{children:'Este módulo usa um pacote de referência fixo.'}),' Os filtros globais acima ficam guardados, mas não recalculam estes gráficos, modelos ou denominadores. Os períodos efetivos e a cobertura aparecem em cada análise.']})}),jsxRuntime.jsx(ScenarioLoad,{state:manifest,children:data=>jsxRuntime.jsxs(jsxRuntime.Fragment,{children:[jsxRuntime.jsx(ScenarioNote,{className:'am-footnote',children:'Cobertura do acervo: '+scenarioPeriod(data)+' · dados processados em '+String(data.sourceAsOf).slice(0,10)+'.'}),jsxRuntime.jsx(content,{base:props.base},tab)]})}),jsxRuntime.jsxs('details',{className:'am-scenario-details',open:legacy,onToggle:event=>setLegacy(event.currentTarget.open),children:[jsxRuntime.jsx('summary',{children:'Análises anteriores e cenários congelados'}),legacy&&jsxRuntime.jsx(Phase2View,props)]})]})},tab);
 }
@@ -426,3 +427,78 @@ function ScenarioSpatial({base}){const state=useScenarioFile('phase3_spatial.jso
 
 function scenarioSpatialSensitivityRows(data){return [{k:data.weights?.k,results:data.results??[]},...(data.sensitivity??[])].sort((a,b)=>a.k-b.k).map(s=>({k:s.k,marketPearson:s.results.find(r=>r.key==='market_pearson')?.pAdjustedHolm??null,marketDeviance:s.results.find(r=>r.key==='market_deviance')?.pAdjustedHolm??null,mitPearson:s.results.find(r=>r.key==='mit_pearson')?.pAdjustedHolm??null,mitDeviance:s.results.find(r=>r.key==='mit_deviance')?.pAdjustedHolm??null}));}
 function scenarioSpatialSensitivityInterpretation(data){const choices=[{k:data.weights?.k,results:data.results??[]},...(data.sensitivity??[])].sort((a,b)=>a.k-b.k);return [['market','Mercado'],['mit','Mitsubishi']].map(([outcome,label])=>{const below=choices.filter(s=>{const rows=s.results.filter(r=>r.outcome===outcome);return rows.length===2&&rows.every(r=>Number.isFinite(r.pAdjustedHolm)&&r.pAdjustedHolm<.05);}).map(s=>'k='+s.k),other=choices.filter(s=>!below.includes('k='+s.k)).map(s=>'k='+s.k);return label+': ambos os resíduos têm p de Holm < 0,05 em '+(below.join(', ')||'nenhuma matriz')+(other.length?'; o mesmo não ocorre em '+other.join(', '):'')+'.';}).join(' ')+' Comparação exploratória; a conclusão depende da matriz e da validade das permutações.';}
+
+/* Contexto econômico: the plain first view of the Economia area.
+   Four official indicators (Banco Central) as cards with a 24-month sparkline,
+   and registrations against vehicle credit on one indexed scale (one axis,
+   base 100 = first month shown). Reads the fixed scenario package; global
+   filters do not apply here, and the view says so. The statistical analyses
+   stay one click away under "Análises técnicas". */
+const CONTEXT_INDICATORS=[
+ {key:'selic_target',label:'Selic (meta)',unit:'% a.a.',kind:'rate',digits:2},
+ {key:'vehicle_financing_rate',label:'Juros para comprar veículo',unit:'% a.m.',kind:'rate',digits:2},
+ {key:'vehicle_credit_concessions',label:'Crédito concedido para veículos',unit:'R$ bi no mês',kind:'level',scale:1/1000,digits:1},
+ {key:'usd_sale',label:'Dólar (PTAX, média do mês)',unit:'R$',kind:'level',digits:2}
+];
+const contextMonth=m=>{if(!m)return '';const [y,mo]=m.split('-');return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][Number(mo)-1]+'/'+y.slice(2);};
+const contextNum=(v,d)=>Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+function contextSeries(sources,key){const s=(sources?.series??[]).find(x=>x.key===key);return (s?.monthly??[]).filter(r=>Number.isFinite(r.value)).map(r=>({month:r.month,value:r.value}));}
+// Card figures: last value and the change against the same month a year earlier.
+function contextCard(series,def){
+ if(!series.length)return null;const last=series[series.length-1],idx=series.findIndex(r=>r.month===String(Number(last.month.slice(0,4))-1)+last.month.slice(4)),prev=idx>=0?series[idx]:null,scale=def.scale??1;
+ const change=!prev?null:def.kind==='rate'?{text:(last.value-prev.value>=0?'+':'−')+contextNum(Math.abs(last.value-prev.value),2)+' p.p. em 12 meses',up:last.value>=prev.value}:{text:(last.value>=prev.value?'+':'−')+contextNum(Math.abs(last.value/prev.value-1)*100,1)+'% em 12 meses',up:last.value>=prev.value};
+ return {value:contextNum(last.value*scale,def.digits),month:contextMonth(last.month),change,spark:series.slice(-24).map(r=>r.value)};
+}
+// Two series on one index (base 100) over their common months.
+function contextIndexed(registrations,credit,months=36){
+ const c=new Map(credit.map(r=>[r.month,r.value])),common=registrations.filter(r=>c.has(r.month)&&r.value>0).slice(-months);
+ if(common.length<2)return null;const r0=common[0].value,c0=c.get(common[0].month);
+ return common.map(r=>({month:r.month,registrations:r.value/r0*100,credit:c.get(r.month)/c0*100,rawRegistrations:r.value,rawCredit:c.get(r.month)}));
+}
+function ContextSpark({values}){
+ if(values.length<2)return null;const min=Math.min(...values),max=Math.max(...values),w=120,h=32,x=i=>i*(w-4)/(values.length-1)+2,y=v=>h-3-(max===min?.5:(v-min)/(max-min))*(h-6);
+ const d=values.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)).join('');
+ return jsxRuntime.jsxs('svg',{className:'ctx-spark',viewBox:'0 0 '+w+' '+h,'aria-hidden':true,children:[jsxRuntime.jsx('path',{d,fill:'none'}),jsxRuntime.jsx('circle',{cx:x(values.length-1),cy:y(values[values.length-1]),r:2.5})]});
+}
+function ContextChart({rows}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs,[hover,setHover]=React.useState(null);
+ const W=760,H=260,L=40,R=16,T=14,B=28,vals=rows.flatMap(r=>[r.registrations,r.credit]),lo=Math.floor(Math.min(...vals)/10)*10,hi=Math.ceil(Math.max(...vals)/10)*10;
+ const x=i=>L+i*(W-L-R)/(rows.length-1),y=v=>T+(1-(v-lo)/(hi-lo||1))*(H-T-B);
+ const line=k=>rows.map((r,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(r[k]).toFixed(1)).join('');
+ const ticks=[];for(let v=lo;v<=hi;v+=Math.max(10,Math.round((hi-lo)/4/10)*10))ticks.push(v);
+ const move=e=>{const rect=e.currentTarget.getBoundingClientRect(),px=(e.clientX-rect.left)/rect.width*W;setHover(Math.max(0,Math.min(rows.length-1,Math.round((px-L)/(W-L-R)*(rows.length-1)))));};
+ const hr=hover!=null?rows[hover]:null;
+ return hs('div',{className:'ctx-chart',children:[
+  hs('svg',{viewBox:'0 0 '+W+' '+H,role:'img','aria-label':'Emplacamentos e crédito concedido para veículos, índice base 100',onMouseMove:move,onMouseLeave:()=>setHover(null),children:[
+   ...ticks.map(v=>hs('g',{children:[h('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),className:'ctx-grid'}),h('text',{x:L-6,y:y(v)+3,textAnchor:'end',children:v})]},'t'+v)),
+   h('line',{x1:L,x2:W-R,y1:y(100),y2:y(100),className:'ctx-base'}),
+   ...rows.map((r,i)=>i%6===0||i===rows.length-1?h('text',{x:x(i),y:H-8,textAnchor:'middle',children:contextMonth(r.month)},'m'+i):null),
+   h('path',{d:line('credit'),className:'ctx-line ctx-credit'}),h('path',{d:line('registrations'),className:'ctx-line ctx-reg'}),
+   h('circle',{cx:x(rows.length-1),cy:y(rows[rows.length-1].registrations),r:4,className:'ctx-end ctx-reg'}),h('circle',{cx:x(rows.length-1),cy:y(rows[rows.length-1].credit),r:4,className:'ctx-end ctx-credit'}),
+   hr&&h('line',{x1:x(hover),x2:x(hover),y1:T,y2:H-B,className:'ctx-cross'})]}),
+  hr&&hs('div',{className:'ctx-tip',style:{left:(x(hover)/W*100)+'%'},children:[h('strong',{children:contextMonth(hr.month)}),hs('span',{children:[h('i',{className:'ctx-reg'}),'Emplacamentos: '+Math.round(hr.rawRegistrations).toLocaleString('pt-BR')+' ('+contextNum(hr.registrations,0)+')']}),hs('span',{children:[h('i',{className:'ctx-credit'}),'Crédito: R$ '+contextNum(hr.rawCredit/1000,1)+' bi ('+contextNum(hr.credit,0)+')']})]})]});
+}
+function ScenarioContext({base,onTechnical}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
+ const sources=useScenarioFile('external_sources.json',base),monthly=useScenarioFile('monthly.json',base);
+ const cards=React.useMemo(()=>sources.data?CONTEXT_INDICATORS.map(def=>({def,card:contextCard(contextSeries(sources.data,def.key),def)})):[],[sources.data]);
+ const regs=React.useMemo(()=>(monthly.data?.rows??[]).map(r=>({month:r.month,value:r.registrations})),[monthly.data]);
+ const indexed=React.useMemo(()=>sources.data?contextIndexed(regs,contextSeries(sources.data,'vehicle_credit_concessions')):null,[regs,sources.data]);
+ const yoy=rows=>{if(!rows||rows.length<13)return null;const a=rows[rows.length-1],b=rows[rows.length-13];return {reg:a.rawRegistrations/b.rawRegistrations-1,credit:a.rawCredit/b.rawCredit-1,month:a.month};};
+ const y=yoy(indexed),signed=v=>(v>=0?'+':'−')+contextNum(Math.abs(v)*100,1)+'%';
+ return hs('div',{className:'ctx',children:[
+  hs('header',{className:'ctx-head',children:[h('h2',{children:'Contexto econômico'}),h('p',{children:'Juros, crédito e câmbio do Banco Central ao lado dos emplacamentos. Base fixa: os filtros do painel não se aplicam aqui.'})]}),
+  h(ScenarioLoad,{state:sources,children:()=>h('div',{className:'ctx-cards',children:cards.map(({def,card})=>hs('div',{className:'ctx-card',children:[
+   h('span',{className:'ctx-label',children:def.label}),
+   card?hs(React.Fragment,{children:[hs('div',{className:'ctx-value-row',children:[hs('strong',{className:'ctx-value',children:[card.value,h('small',{children:' '+def.unit})]}),h(ContextSpark,{values:card.spark})]}),
+    hs('span',{className:'ctx-meta',children:[card.month,card.change&&h('span',{className:card.change.up?'ctx-up':'ctx-down',children:' · '+card.change.text})]})]}):h('span',{className:'ctx-meta',children:'Indisponível'})]},def.key))})}),
+  hs('section',{className:'ctx-panel',children:[
+   h('h3',{children:y?'Emplacamentos '+signed(y.reg)+' e crédito para veículos '+signed(y.credit)+' em 12 meses':'Emplacamentos e crédito para veículos'}),
+   h('p',{className:'ctx-sub',children:'Índice com base 100 no primeiro mês mostrado, para comparar as duas séries na mesma escala. Crédito em valores nominais, até '+(indexed?contextMonth(indexed[indexed.length-1].month):'o último mês publicado')+'.'}),
+   h(ScenarioLoad,{state:monthly,children:()=>indexed?hs(React.Fragment,{children:[hs('div',{className:'ctx-legend',children:[hs('span',{children:[h('i',{className:'ctx-reg'}),'Emplacamentos (automóveis + comerciais leves)']}),hs('span',{children:[h('i',{className:'ctx-credit'}),'Crédito concedido a pessoas físicas para veículos']})]}),h(ContextChart,{rows:indexed})]}):h('p',{children:'Séries insuficientes para comparar.'})})]}),
+  hs('section',{className:'ctx-panel ctx-forecast',children:[
+   h('h3',{children:'Previsões'}),
+   h('p',{children:'Os modelos de previsão testados não superaram o método mais simples, que repete o mesmo mês do ano anterior. Por isso não mostramos uma projeção como se fosse confiável. Os testes completos ficam em Análises técnicas.'}),
+   h('button',{type:'button',className:'am-small-button',onClick:()=>onTechnical?.('forecasts'),children:'Ver previsões experimentais'})]}),
+  h('p',{className:'ctx-source',children:'Fontes: Banco Central do Brasil, séries SGS 432 (Selic meta), 25471 (juros PF para veículos), 20673 (concessões PF para veículos) e 1 (dólar PTAX); emplacamentos da Fenabrave conferidos mês a mês.'})]});
+}

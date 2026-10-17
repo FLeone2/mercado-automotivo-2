@@ -3,7 +3,7 @@ const html=fs.readFileSync('index.html','utf8'),source=fs.readFileSync('src/navi
 const jsx=(type,props,key)=>({type,props,key});
 const api=new Function('jsxRuntime','SCENARIO_TABS',source+';return {marketTabs,marketNavigation,navigationLocation,MarketNavigation,MarketSubnavigation};')({jsx,jsxs:jsx},[{value:'diagnostic',label:'Diagnóstico'}]);
 function all(n){return n&&typeof n==='object'?[n,...[n.props?.children].flat(Infinity).flatMap(all)]:[];}
-assert.deepEqual(api.marketNavigation.map(g=>g.label),['Panorama','Evolução','Concorrência','Segmentos','Territórios','Explorar','Cenários','Animações']);
+assert.deepEqual(api.marketNavigation.map(g=>g.label),['Panorama','Evolução','Concorrência','Segmentos','Territórios','Explorar','Economia','Animações']);
 const legacy=['dashboard','history','competition','ranking','technology','origin','geography','explore','models','quality'];
 assert(legacy.every(id=>api.marketTabs.some(t=>t.id===id)));
 for(const tab of api.marketTabs){
