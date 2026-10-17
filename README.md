@@ -95,6 +95,9 @@ Os dados da Economia (Banco Central, IBGE) são atualizados à parte com `python
 | Territórios | Emplacamentos por mil habitantes | `src/history-analyses.js`, `data/reference/population.json` |
 | Economia | Selos dado oficial / análise / projeção | `src/scenarios.js` |
 | Dados e metodologia | Como confiar nestes números | `src/trust-guide.*` |
+| Territórios | Marca líder por município (UF, filtros do painel, volume mínimo, zoom próprio) | `src/leader-map.*`, modo `leaders` do worker |
+| Territórios | Mapa de calor ao lado dos espigões | `src/territory-brand-maps.js` |
+| Tema | Terra e Oliva e ouro (a partir das paletas Marrom e Verde; gráficos mantêm a paleta validada) | `src/theme-registry.js` |
 
 `data/history/` (soma mensal dos cubos, gerada por `scripts/build-history.py`) alimenta as análises de longo prazo sem baixar 129 cubos no navegador.
 

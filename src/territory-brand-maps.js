@@ -234,6 +234,51 @@ function ExtrudedStates({states,geo,tops,ufTotals,population,channelLabel}){
   tip&&hs('div',{className:'tbm-tip',style:{left:tip.x+14,top:tip.y+14},children:[h('strong',{children:TBM_UF_NAMES[states[tip.i].uf]}),hs('div',{className:'tbm-tip-row',children:[h('span',{children:'Emplacamentos'}),h('span',{children:tbmInt(ufTotals.get(states[tip.i].uf))})]}),hs('div',{className:'tbm-tip-row',children:[h('span',{children:'Por mil habitantes'}),h('span',{children:pop.get(states[tip.i].uf)>0?((ufTotals.get(states[tip.i].uf)??0)/pop.get(states[tip.i].uf)*1000).toLocaleString('pt-BR',{maximumFractionDigits:1}):'—'})]}),tops?.get(states[tip.i].uf)?.top?.[0]&&hs('div',{className:'tbm-tip-row tbm-muted',children:[h('span',{children:'Marca líder'}),h('span',{children:tbmName(tops.get(states[tip.i].uf).top[0].b)})]})]})]});
 }
 
+/* ---------- 2b. heat map ---------- */
+// Every municipality adds a soft blob of heat at its position; the blobs add up where cities are close
+// together. One hue, light to dark (sequential), compressed so the biggest metros do not erase the rest.
+function HeatMap({spikes,states,channelLabel}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
+ const wrap=React.useRef(null),canvas=React.useRef(null),w=useCanvasWidth(wrap),frame=React.useRef(null);
+ const [measure,setMeasure]=React.useState('market'),[scale,setScale]=React.useState('sqrt'),[radius,setRadius]=React.useState(18),[tip,setTip]=React.useState(null);
+ const [vx,vy,vw,vh]=React.useMemo(()=>value$3.viewBox.split(/\s+/).map(Number),[]);
+ const values=measure==='mit'?spikes.mit:spikes.market;
+ const top=React.useMemo(()=>values.map((v,i)=>({i,v})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v).slice(0,5),[values]),total=React.useMemo(()=>values.reduce((a,b)=>a+b,0),[values]);
+ React.useEffect(()=>{const cv=canvas.current;if(!cv||!w)return;const dpr=Math.min(devicePixelRatio||1,2),H=Math.round(w*vh/vw),W=Math.round(w*dpr),HH=Math.round(H*dpr);
+  if(cv.width!==W||cv.height!==HH){cv.width=W;cv.height=HH;cv.style.height=H+'px';}
+  const ctx=cv.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,HH);
+  const k=W/vw,drawStates=(fill,stroke)=>{ctx.save();ctx.setTransform(k,0,0,k,-vx*k,-vy*k);ctx.lineWidth=1.1/k;states.forEach(st=>{if(fill){ctx.fillStyle=fill;ctx.fill(st.p);}ctx.strokeStyle=stroke;ctx.stroke(st.p);});ctx.restore();};
+  const surface=tbmResolve(cv,'var(--surface)');drawStates(tbmResolve(cv,'var(--muted)'),surface);
+  // 1. accumulate alpha with soft blobs
+  const layer=document.createElement('canvas');layer.width=W;layer.height=HH;const lc=layer.getContext('2d',{willReadFrequently:true});
+  const max=Math.max(1,...values),weight=v=>scale==='log'?Math.log1p(v)/Math.log1p(max):Math.sqrt(v/max),r0=radius*dpr*(W/(900*dpr));
+  const pts=[];
+  for(let i=0;i<values.length;i++){const v=values[i];if(!(v>0))continue;const x=(spikes.points[i][0]-vx)*k,y=(spikes.points[i][1]-vy)*k,wt=weight(v),rad=r0*(.55+.9*wt),a=Math.min(.9,.05+.55*wt);pts.push([x/dpr,y/dpr,i]);
+   const g=lc.createRadialGradient(x,y,0,x,y,rad);g.addColorStop(0,'rgba(0,0,0,'+a+')');g.addColorStop(1,'rgba(0,0,0,0)');lc.fillStyle=g;lc.beginPath();lc.arc(x,y,rad,0,Math.PI*2);lc.fill();}
+  // 2. colour the accumulated alpha with a one-hue ramp
+  const base=tbmResolve(cv,measure==='mit'?'var(--mitsubishi-color)':'var(--accent)'),stops=[[0,base,0],[.18,base,.22],[.5,base,.6],[.8,tbmShade(base,.82),.88],[1,tbmShade(base,.6),1]];
+  const lut=document.createElement('canvas');lut.width=256;lut.height=1;const lg=lut.getContext('2d',{willReadFrequently:true}),grad=lg.createLinearGradient(0,0,256,0);
+  const rgba=(c,a)=>{const m=/rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c);return m?'rgba('+m[1]+','+m[2]+','+m[3]+','+a+')':c;};
+  stops.forEach(([o,c,a])=>grad.addColorStop(o,rgba(tbmShade(c,1),a)));lg.fillStyle=grad;lg.fillRect(0,0,256,1);const ramp=lg.getImageData(0,0,256,1).data;
+  const img=lc.getImageData(0,0,W,HH),d=img.data;for(let p=0;p<d.length;p+=4){const a=d[p+3],q=a*4;d[p]=ramp[q];d[p+1]=ramp[q+1];d[p+2]=ramp[q+2];d[p+3]=ramp[q+3];}
+  lc.putImageData(img,0,0);
+  // Heat stays inside Brazil: clip to the union of the state outlines.
+  const country=new Path2D();states.forEach(st=>country.addPath(st.p));ctx.save();ctx.setTransform(k,0,0,k,-vx*k,-vy*k);ctx.clip(country);ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(layer,0,0);ctx.restore();
+  drawStates(null,tbmResolve(cv,'var(--surface)'));
+  frame.current={pts};
+ },[w,values,scale,radius,measure,states,spikes,vx,vy,vw,vh]);
+ const move=e=>{const f=frame.current;if(!f)return;const r=canvas.current.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;let best=null,bd=14;for(const [x,y,i] of f.pts){const dd=Math.hypot(px-x,py-y);if(dd<bd||(dd<=bd&&best!=null&&values[i]>values[best])){bd=dd;best=i;}}setTip(best==null?null:{i:best,x:e.clientX,y:e.clientY});};
+ return hs('div',{className:'tbm-card tbm-heat','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-de-calor'}),
+  hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Mapa de calor'}),h('p',{children:'Onde os emplacamentos se concentram, '+channelLabel+'. A cor soma municípios vizinhos; a escala é relativa, não um número absoluto.'})]}),
+   hs('div',{className:'tbm-heat-controls',children:[h('div',{className:'tbm-seg',role:'group','aria-label':'Medida do mapa de calor',children:[['market','Mercado'],['mit','Mitsubishi']].map(([v,l])=>h('button',{type:'button','aria-pressed':measure===v,onClick:()=>setMeasure(v),children:l},v))}),
+    h('div',{className:'tbm-seg',role:'group','aria-label':'Escala de cor',children:[['sqrt','Suave'],['log','Realça o interior']].map(([v,l])=>h('button',{type:'button','aria-pressed':scale===v,onClick:()=>setScale(v),title:v==='sqrt'?'Raiz quadrada: as grandes metrópoles aparecem sem apagar o resto':'Logarítmica: municípios pequenos ganham mais destaque',children:l},v))}),
+    hs('label',{className:'tbm-range',children:['Raio',h('input',{type:'range',min:8,max:40,value:radius,'aria-label':'Raio do mapa de calor',onChange:e=>setRadius(+e.target.value)})]})]})]}),
+  h('div',{ref:wrap,className:'tbm-canvas',children:h('canvas',{ref:canvas,role:'img','aria-label':'Mapa de calor dos emplacamentos por município',onMouseMove:move,onMouseLeave:()=>setTip(null)})}),
+  hs('div',{className:'tbm-heat-scale'+(measure==='mit'?' is-mit':''),children:[h('span',{children:'Menos concentrado'}),h('i',{'aria-hidden':true}),h('span',{children:'Mais concentrado'})]}),
+  hs('p',{className:'tbm-callout',children:[h('b',{children:'Maiores pontos: '}),top.map(t=>spikes.names[t.i]+' ('+tbmInt(t.v)+')').join(', ')+'. Juntos, são '+tbmPct(total>0?top.reduce((a,t)=>a+t.v,0)/total:null)+' do total'+(measure==='mit'?' da Mitsubishi':'')+'.']}),
+  tip&&hs('div',{className:'tbm-tip',style:{left:tip.x+14,top:tip.y+14},children:[h('strong',{children:spikes.names[tip.i]}),hs('div',{className:'tbm-tip-row',children:[h('span',{children:measure==='mit'?'Mitsubishi':'Mercado'}),h('span',{children:tbmInt(values[tip.i])})]})]})]});
+}
+
 function TerritoryBrandMaps({filters,manifest,base}){
  const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
  const [channel,setChannel]=React.useState('VAREJO');
@@ -262,6 +307,7 @@ function TerritoryBrandMaps({filters,manifest,base}){
   tops&&h(TopThreeMap,{tops,states}),
   explore.result&&h(BrandStrengthMap,{result:explore.result,states}),
   spikes&&h(SpikeMap,{spikes,states,geo,channelLabel}),
+  spikes&&h(HeatMap,{spikes,states,channelLabel}),
   tops&&model&&h(ExtrudedStates,{states,geo,tops,ufTotals,population:population.data,channelLabel})]});
 }
 

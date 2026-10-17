@@ -157,7 +157,7 @@ MOUNTS = [
      "tab==='competition'&&jsxRuntime.jsxs('div', { className:'am-competition-view', children: [jsxRuntime.jsx(CompetitiveReading,{filters:effectiveFilters,manifest,base:getBase(snapshot)}), "),
     # Territórios: brand maps right after the primary map.
     ("pending:overviewMapQuery.pending,error:overviewMapQuery.error})})",
-     "pending:overviewMapQuery.pending,error:overviewMapQuery.error})})\n   , tab==='geography'&&mapReady&&jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})"),
+     "pending:overviewMapQuery.pending,error:overviewMapQuery.error})})\n   , tab==='geography'&&mapReady&&jsxRuntime.jsx(LeaderMap,{filters:effectiveFilters,base:getBase(snapshot)})\n   , tab==='geography'&&mapReady&&jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})"),
     # Economia opens on "Contexto econômico".
     ("const scenarioView=SCENARIO_TABS.some(item=>item.value===scenarioSaved.tab)?scenarioSaved.tab:'diagnostic';",
      "const scenarioView=SCENARIO_TABS.some(item=>item.value===scenarioSaved.tab)?scenarioSaved.tab:'context';"),

@@ -58,3 +58,10 @@
 .tbm-readout{margin:0;font-size:13px;min-height:40px}
 .tbm-toplist{margin:0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
 .tbm-range select{font:inherit;font-size:13px;min-height:32px;border:1px solid var(--border);border-radius:8px;background:var(--control);color:var(--text);padding:0 8px}
+
+/* Mapa de calor */
+.tbm-heat-controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.tbm-heat-scale{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--secondary)}
+.tbm-heat-scale i{flex:0 1 220px;height:10px;border-radius:5px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 6%,var(--muted)),var(--accent) 60%,color-mix(in srgb,var(--accent) 60%,#000))}
+.tbm-heat-scale.is-mit i{background:linear-gradient(90deg,color-mix(in srgb,var(--mitsubishi-color) 6%,var(--muted)),var(--mitsubishi-color) 60%,color-mix(in srgb,var(--mitsubishi-color) 60%,#000))}
+.tbm-heat .tbm-card-head{padding-right:112px}.tbm-heat .tbm-canvas{max-width:760px;margin-inline:auto}.tbm-heat .tbm-callout,.tbm-heat .tbm-heat-scale{max-width:760px;margin-inline:auto;width:100%}

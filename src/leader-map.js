@@ -64,8 +64,9 @@ function LeaderMap({filters,base}){
  const opacityFor=it=>{if(!it.m||it.m.total<minimum||it.m.tie)return 1;const base=.5+.5*Math.min(1,Math.max(0,(it.m.leadShare-.25)/.45));return highlight&&it.m.lead.brand!==highlight?.12:base;};
  const zoom=(factor,cx,cy)=>setBox(b=>{if(!b)return b;const w=Math.min(b.full.w,Math.max(b.full.w/24,b.w/factor)),k=w/b.w,hh=b.h*k,px=cx??b.x+b.w/2,py=cy??b.y+b.h/2;let x=px-(px-b.x)*k,y=py-(py-b.y)*k;x=Math.min(b.full.x+b.full.w-w,Math.max(b.full.x,x));y=Math.min(b.full.y+b.full.h-hh,Math.max(b.full.y,y));return {...b,x,y,w,h:hh};});
  const svgPoint=(e,b)=>{const r=e.currentTarget.getBoundingClientRect();return [b.x+(e.clientX-r.left)/r.width*b.w,b.y+(e.clientY-r.top)/r.height*b.h];};
- const onWheel=e=>{if(!(e.ctrlKey||e.metaKey)||!box)return;e.preventDefault();const [x,y]=svgPoint(e,box);zoom(e.deltaY<0?1.25:.8,x,y);};
- const wheelRef=React.useCallback(node=>{if(node)node.addEventListener('wheel',onWheel,{passive:false});},[box]);
+ // One wheel listener for the life of the svg (a ref callback re-created per render stacked listeners and over-zoomed).
+ const latest=React.useRef(null),wheelRef=React.useRef(null);latest.current={box,zoom};
+ React.useEffect(()=>{const el=wheelRef.current;if(!el)return;const onWheel=e=>{const {box:b,zoom:z}=latest.current;if(!(e.ctrlKey||e.metaKey)||!b)return;e.preventDefault();const [x,y]=svgPoint(e,b);z(e.deltaY<0?1.25:.8,x,y);};el.addEventListener('wheel',onWheel,{passive:false});return()=>el.removeEventListener('wheel',onWheel);},[Boolean(box&&joined&&!pending)]);
  const down=e=>{if(!box||box.w>=box.full.w-.5)return;drag.current={x:e.clientX,y:e.clientY,box,moved:false};e.currentTarget.setPointerCapture?.(e.pointerId);};
  const move=e=>{const d=drag.current;if(d){const r=e.currentTarget.getBoundingClientRect(),dx=(e.clientX-d.x)/r.width*d.box.w,dy=(e.clientY-d.y)/r.height*d.box.h;if(Math.abs(e.clientX-d.x)+Math.abs(e.clientY-d.y)>3)d.moved=true;if(d.moved){setTip(null);setBox({...d.box,x:Math.min(d.box.full.x+d.box.full.w-d.box.w,Math.max(d.box.full.x,d.box.x-dx)),y:Math.min(d.box.full.y+d.box.full.h-d.box.h,Math.max(d.box.full.y,d.box.y-dy))});return;}}
   const i=e.target?.dataset?.i;if(i===undefined){setHover(null);setTip(null);return;}setHover(+i);setTip({i:+i,x:e.clientX,y:e.clientY});};

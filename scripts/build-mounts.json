@@ -40,10 +40,6 @@
   "tab==='technology'&&jsxRuntime.jsx(TechnologyView, { model: model, scope: scope, setFilter: setFilter,})\n    , tab==='technology'&&jsxRuntime.jsx(ElectrificationHistory,{filters:effectiveFilters,base:getBase(snapshot)})"
  ],
  [
-  "jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})",
-  "jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})\n   , tab==='geography'&&mapReady&&jsxRuntime.jsx(PenetrationMap,{filters:effectiveFilters,base:getBase(snapshot)})"
- ],
- [
   "tab==='quality'?jsxRuntime.jsx(QualityView, { manifest: manifest,})",
   "tab==='quality'?jsxRuntime.jsxs(jsxRuntime.Fragment,{children:[jsxRuntime.jsx(TrustGuide,{manifest}),jsxRuntime.jsx(QualityView, { manifest: manifest,})]})"
  ],
@@ -66,9 +62,5 @@
  [
   "\"Ver composição completa, incluindo não classificados\"",
   "\"Ver composição completa por propulsão\""
- ],
- [
-  "jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})",
-  "jsxRuntime.jsx(LeaderMap,{filters:effectiveFilters,base:getBase(snapshot)})\n   , tab==='geography'&&mapReady&&jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})"
  ]
 ]
