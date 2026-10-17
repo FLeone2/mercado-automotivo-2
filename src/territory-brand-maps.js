@@ -128,7 +128,7 @@ function TopThreeMap({tops,states}){
  const rows=[...ufs].sort((a,b)=>tops.get(b.uf).total-tops.get(a.uf).total);
  const shown=new Map();ufs.forEach(s=>tops.get(s.uf).top.forEach(x=>shown.set(x.b,(shown.get(x.b)||0)+x.v)));
  const legendBrands=[...shown.keys()].filter(tbmKnown).sort((a,b)=>shown.get(b)-shown.get(a)),hasOther=[...shown.keys()].some(b=>!tbmKnown(b));
- return hs('div',{className:'tbm-card',children:[
+ return hs('div',{className:'tbm-card','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-marcas'}),
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Top 3 marcas por estado'}),h('p',{children:'Cada estado em três faixas, da 1ª à 3ª marca, com largura proporcional às vendas de cada uma.'})]}),
    h('div',{className:'tbm-seg',role:'group','aria-label':'Forma do mapa',children:[['bands','Faixas'],['multi','1º · 2º · 3º lugar']].map(([v,l])=>h('button',{type:'button','aria-pressed':mode===v,onClick:()=>setMode(v),children:l},v))})]}),
   hs('div',{className:'tbm-legend',children:legendBrands.map(b=>hs('span',{children:[h('i',{style:{background:tbmColor(b)}}),tbmName(b)]},b)).concat(hasOther?[hs('span',{children:[h('i',{className:'tbm-hatch'}),'Outras marcas (nome no mapa e na lista)']},'o')]:[])}),
@@ -149,7 +149,7 @@ function BrandStrengthMap({result,states}){
  if(!data)return null;
  const fill=r=>{if(!r)return 'var(--muted)';const k=Math.max(-1,Math.min(1,(r.index-100)/60)),pct=Math.round(Math.abs(k)*85);return pct<4?'var(--muted)':'color-mix(in srgb,'+(k>0?'var(--chart-1)':'var(--chart-2)')+' '+pct+'%,var(--muted))';};
  const sorted=[...data.rows.values()].sort((a,b)=>b.index-a.index),best=sorted.slice(0,3).map(r=>r.uf),hr=hover?data.rows.get(hover):null;
- return hs('div',{className:'tbm-card',children:[
+ return hs('div',{className:'tbm-card','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-marcas'}),
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Onde '+tbmName(chosen)+' é mais forte: '+best.join(', ')}),h('p',{children:'Participação da marca em cada estado comparada com a média do Brasil ('+tbmPct(data.national)+'). Azul: acima da média; âmbar: abaixo.'})]}),
    hs('label',{className:'tbm-range',children:['Marca',h('select',{value:chosen,onChange:e=>setBrand(e.target.value),'aria-label':'Marca',children:brands.map(b=>h('option',{value:b,children:tbmName(b)},b))})]})]}),
   hs('div',{className:'tbm-strength',children:[
@@ -192,7 +192,7 @@ function SpikeMap({spikes,states,geo,channelLabel}){
   for(const i of f.order){const [x,y]=f.pts[i],hh=cur[i]*f.pr.Hz;const d=(py>=y-hh&&py<=y+2)?Math.abs(px-x):Math.hypot(px-x,py-(py<y-hh?y-hh:y));if(d<=bd){bd=d;best=i;}}
   setHover(best);setTip(best==null?null:{i:best,x:e.clientX,y:e.clientY});};
  const top=React.useMemo(()=>{let t=-1;values.forEach((v,i)=>{if(t<0||v>values[t])t=i;});const sum=values.reduce((a,b)=>a+b,0);return t<0?null:{name:spikes.names[t],v:values[t],share:sum>0?values[t]/sum:null};},[values,spikes]);
- return hs('div',{className:'tbm-card',children:[
+ return hs('div',{className:'tbm-card','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-marcas'}),
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Espigões por município'}),h('p',{children:'Altura proporcional aos emplacamentos de cada município, '+channelLabel+'.'})]}),
    h('div',{className:'tbm-seg',role:'group','aria-label':'Medida dos espigões',children:[['market','Mercado'],['mit','Mitsubishi'],['network','Rede × oportunidade']].map(([v,l])=>h('button',{type:'button','aria-pressed':color===v,onClick:()=>setColor(v),children:l},v))})]}),
   h(OrbitControls,{orbit,home}),
@@ -225,7 +225,7 @@ function ExtrudedStates({states,geo,tops,ufTotals,population,channelLabel}){
  const move=e=>{const f=frame.current;if(!f||orbit.dragging()){setTip(null);return;}const r=canvas.current.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,ctx=canvas.current.getContext('2d');let hit=null;
   for(let k=f.drawn.length-1;k>=0;k--){const [i,hh]=f.drawn[k];ctx.setTransform(...f.pr.mat(1,hh));if(ctx.isPointInPath(states[i].p,px,py)){hit=i;break;}}
   ctx.setTransform(1,0,0,1,0,0);setHover(hit);setTip(hit==null?null:{i:hit,x:e.clientX,y:e.clientY});};
- return hs('div',{className:'tbm-card',children:[
+ return hs('div',{className:'tbm-card','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-marcas'}),
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Brasil em 3D'}),h('p',{children:'Altura pela medida escolhida, '+channelLabel+'; o topo tem a cor da marca líder do estado.'})]}),
    h('div',{className:'tbm-seg',role:'group','aria-label':'Medida da altura',children:[['volume','Volume'],['per1000','Por mil habitantes']].map(([v,l])=>h('button',{type:'button','aria-pressed':metric===v,onClick:()=>setMetric(v),children:l},v))})]}),
   h(OrbitControls,{orbit,home}),

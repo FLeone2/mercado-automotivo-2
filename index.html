@@ -680,6 +680,56 @@ i.ctx-reg{background:var(--chart-1)}i.ctx-credit{background:var(--chart-2)}
 .cr-end{fill:var(--accent);stroke:var(--surface);stroke-width:2}
 @media(prefers-reduced-motion:reduce){.cr-card{animation:none}.cr-fill{transition:none}}
 </style>
+<style id="market-pulse-styles">
+/* Pulso do recorte: one quiet row of five figures under the filters, on every area. */
+.mp-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;margin:12px 0 16px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.mp-tile{display:flex;flex-direction:column;gap:2px;min-width:0;padding:10px 14px;background:var(--surface)}
+.mp-label{font-size:12px;color:var(--secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-tile strong{font-size:20px;font-weight:650;letter-spacing:-.01em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mp-change{font-size:12px;color:var(--secondary);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-up{color:var(--positive)}.mp-down{color:var(--negative)}
+.mp-strip[aria-busy=true] strong{color:var(--secondary)}
+@media (max-width:900px){.mp-strip{grid-template-columns:repeat(5,minmax(150px,1fr));overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-inline:contain}.mp-tile{scroll-snap-align:start}}
+/* Perguntas rápidas (Panorama). */
+.mp-questions{margin:8px 0 20px}
+
+.mp-question-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:1000px){.mp-question-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.mp-question-grid{grid-template-columns:1fr}}
+.mp-question{display:flex;flex-direction:column;gap:8px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.mp-question h3{margin:0;font-size:15px;font-weight:600;line-height:1.35}
+.mp-question p{margin:0;flex:1;font-size:13px;line-height:1.55;color:var(--secondary)}
+.mp-question button{align-self:flex-start}
+@media print{.mp-question button{display:none}}
+.mp-questions-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 10px}
+.mp-questions-head h2{margin:0;font-size:clamp(18px,1.6vw,21px);font-weight:650;letter-spacing:-.01em}
+</style>
+<style id="export-tools-styles">
+/* Baixar PNG: a quiet button in the corner of each exportable chart. */
+[data-export-root]{position:relative}
+.export-image-button{position:absolute;top:0;right:0;z-index:2;min-height:30px;padding:4px 10px;border:1px solid var(--border);border-radius:8px;background:var(--control);color:var(--secondary);font:500 12px var(--font-sans);cursor:pointer;opacity:.85;transition:opacity .15s,background-color .15s}
+.export-image-button:hover,.export-image-button:focus-visible{opacity:1;background:var(--control-hover);color:var(--text)}
+.ac-bubbles>.export-image-button{top:4px}
+.tbm-card>.export-image-button{top:12px;right:12px}
+.print-header{display:none}
+@media print{
+ @page{margin:12mm}
+ html,body{background:#fff!important}
+ :root{color-scheme:light}
+ .print-header{display:flex!important;flex-direction:column;gap:2px;margin:0 0 10px;padding:0 0 8px;border-bottom:1px solid #ccc;font:12px var(--font-sans);color:#333}
+ .print-header strong{font-size:16px;color:#111}
+ [data-print-hide]{display:none!important}
+ .dashboard-topbar,.am-primary-nav,.am-subnavigation,.market-filter-bar,.am-context-actions,.export-image-button,.am-small-button,.mp-question button,footer .am-analysis-actions,.am-footer-actions{display:none!important}
+ .dashboard-component,.mp-question,.oi-card,.mp-strip,.tbm-card,.cc-chart,.ac-chart,figure,svg{break-inside:avoid}
+ .am-app,.dashboard-root,main,[data-data-app-content]{padding:0!important;margin:0!important;box-shadow:none!important;background:#fff!important}
+ .mp-strip{grid-template-columns:repeat(5,minmax(0,1fr))!important;overflow:visible!important}
+ .mp-tile{padding:6px 8px}.mp-tile strong{font-size:15px}.mp-label,.mp-change{white-space:normal;overflow:visible;font-size:10px}
+ html.print-summary,html.print-summary *{min-height:0!important}
+ html.print-summary body{height:auto!important}
+ html.print-summary .mp-question-grid{grid-template-columns:repeat(3,1fr)}
+ html.print-summary .mp-question{padding:8px 10px}
+}
+</style>
 <style id="design-system-styles">
 /* Design system: the single visual layer for the whole dashboard.
    Loaded after every other stylesheet. Tokens for the default theme (`original`
@@ -2472,7 +2522,7 @@ function OfficialReconciliation({manifest}){const {queries}=dataApp.useDataApp()
  ]});
 }
 
-const favoriteSupportedTab = tab => ['dashboard','explore','ranking'].includes(tab);
+const favoriteSupportedTab = tab => marketTabs.some(item=>item.id===tab&&item.id!=='quality');
 function restoreAnalysisCriteria(shell, criteria, onHighlight = () => {},onRankingRestore=()=>{}) {
   if (typeof shell?.exploreDashboard !== 'function' || typeof shell?.setFilter !== 'function' || (criteria.explore && typeof shell?.setSectionView !== 'function')) throw Error('A restauração de critérios não está disponível neste painel.');
   // Called synchronously in one React click: public shell updates are batched. The
@@ -2968,7 +3018,7 @@ const globalLabels={...LABELS$1,date:'Período',population:'Universo'};
 const choiceLabels={light:'Automóveis + comerciais leves',all_content:'Todo o conteúdo dos arquivos',chart:'Gráfico personalizado',ranking:'Ranking conectado',structure:'Pirâmide BD',mitsubishi:'Mitsubishi × mercado',day:'Dia',month:'Mês',year:'Ano',count:'Emplacamentos',marketShare:'Participação',changeRate:'Crescimento',line:'Linha',bar:'Barras',stackedArea:'Área empilhada',none:'Sem séries',strict:'Origem chinesa verificada',inclusive:'Chinesas + parcerias Brasil–China',previous:'Período anterior equivalente',share:'Participação',...LABELS$1};
 const show=(value,key,local=false)=>Array.isArray(value)?value.join(', ')||'Todas':value==='all'?'Todos / histórico disponível':local&&key==='comparison'&&value==='year'?'Mesmo período do ano anterior':local||key==='population'?choiceLabels[value]??String(value):String(value);
 function CriteriaSummary({criteria}) {return jsxRuntime.jsxs('div', { className: "am-analysis-criteria", 'data-reviewed-rows': true, children: [jsxRuntime.jsx('h4', { children: "Critérios que serão reabertos"   }), jsxRuntime.jsxs('dl', { children: [Object.entries(criteria.filters).map(([key,value])=>jsxRuntime.jsxs(React.default.Fragment, { children: [jsxRuntime.jsx('dt', { children: globalLabels[key]??key}), jsxRuntime.jsx('dd', { children: show(value,key)})]}, key)), Object.entries(criteria.ranking??criteria.explore??{}).map(([key,value])=>jsxRuntime.jsxs(React.default.Fragment, { children: [jsxRuntime.jsx('dt', { children: localLabels[key]??key}), jsxRuntime.jsx('dd', { children: show(value,key,true)})]}, 'explore-'+key)), jsxRuntime.jsx('dt', { children: "Destaque Mitsubishi" }), jsxRuntime.jsx('dd', { children: criteria.highlightMitsubishi?'Ativado':'Desativado'})]})]});}
-function FavoritesPanel({operations,criteria,canSave,name,setName,onClose}) {const active=operations.value?.entries.filter(entry=>!entry.deletedAt)??[],deleted=operations.value?.entries.filter(entry=>entry.deletedAt)??[];return jsxRuntime.jsxs('div', { className: "am-analysis-panel", children: [jsxRuntime.jsx('p', { children: FAVORITES_DISCLOSURE}), jsxRuntime.jsx(PageNote, {originalTag:'p', className: "am-footnote", children: "Salva os filtros e controles de Panorama, Ranking, Pirâmide BD ou Explorar neste navegador. Não guarda resultados antigos nem edições de layout."                         }), operations.busy&&jsxRuntime.jsx('p', { role: "status", children: "Conferindo a versão da base…"    }), operations.error&&jsxRuntime.jsx('p', { role: "alert", className: "am-analysis-error", children: operations.error}), operations.notice&&jsxRuntime.jsx('p', { role: "status", children: operations.notice}), operations.selected?jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx('h3', { children: operations.selected.entry.name}), operations.selected.assessment.warnings.map((warning,index)=>jsxRuntime.jsx('p', { className: "am-analysis-warning", children: warning}, index)), operations.selected.assessment.issues.map((issue,index)=>jsxRuntime.jsx('p', { role: "alert", children: issue}, index)), operations.selected.assessment.criteria&&jsxRuntime.jsx(CriteriaSummary, { criteria: operations.selected.assessment.criteria,}), jsxRuntime.jsxs('div', { className: "am-analysis-buttons", children: [jsxRuntime.jsx(dataApp.Button, { disabled: !operations.selected.assessment.ok||operations.busy, onClick: ()=>{if(operations.reopen())onClose();}, children: "Reabrir com dados atuais"   }), jsxRuntime.jsx(dataApp.Button, { onClick: operations.cancelReview, children: "Voltar à lista"  })]})]}):jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [canSave?jsxRuntime.jsxs('form', { onSubmit: async event=>{event.preventDefault();if(await operations.save(name))setName('');}, children: [jsxRuntime.jsxs('label', { className: "am-analysis-input", children: ["Nome da análise"  , jsxRuntime.jsx('input', { value: name, onChange: event=>setName(event.target.value), maxLength: 100, placeholder: "Ex.: SUVs compactos no Sudeste"    , autoComplete: "off", required: true,})]}), jsxRuntime.jsx(dataApp.Button, { type: "submit", disabled: !name.trim()||!operations.ok||operations.busy, children: "Salvar critérios atuais"  })]}):jsxRuntime.jsx('p', { children: "Para salvar uma análise, abra Visão geral, Ranking ou Explorar. Você pode reabrir os favoritos abaixo."              }), jsxRuntime.jsxs('h3', { children: ["Favoritos", active.length?' · '+active.length:'']}), !active.length&&operations.ok&&jsxRuntime.jsx('p', { children: "Nenhuma análise salva neste navegador."    }), jsxRuntime.jsx('ul', { className: "am-analysis-list", children: active.map(entry=>jsxRuntime.jsxs('li', { children: [jsxRuntime.jsxs('span', { children: [jsxRuntime.jsx('strong', { children: entry.name}), jsxRuntime.jsxs('small', { children: [entry.criteria.tabId==='explore'?'Explorar':entry.criteria.tabId==='ranking'?'Ranking':'Visão geral', " · "  , entry.criteria.filters.date==='all'?'Histórico disponível':entry.criteria.filters.date]})]}), jsxRuntime.jsxs('div', { children: [jsxRuntime.jsx(dataApp.Button, { disabled: operations.busy, onClick: ()=>operations.review(entry), children: "Revisar"}), jsxRuntime.jsx(dataApp.Button, { onClick: ()=>operations.remove(entry.id), 'aria-label': 'Remover favorito '+entry.name, children: "Remover"})]})]}, entry.id))}), deleted.length>0&&jsxRuntime.jsxs('details', { children: [jsxRuntime.jsxs('summary', { children: ["Removidos · "  , deleted.length]}), jsxRuntime.jsx('p', { children: "Os critérios continuam guardados e podem ser restaurados."       }), jsxRuntime.jsx('ul', { className: "am-analysis-list", children: deleted.map(entry=>jsxRuntime.jsxs('li', { children: [jsxRuntime.jsx('strong', { children: entry.name}), jsxRuntime.jsx(dataApp.Button, { onClick: ()=>operations.restore(entry.id), 'aria-label': 'Restaurar favorito '+entry.name, children: "Restaurar"})]}, entry.id))})]}), jsxRuntime.jsxs('div', { className: "am-analysis-buttons", children: [jsxRuntime.jsx(dataApp.Button, { onClick: operations.refresh, children: "Atualizar lista" }), jsxRuntime.jsx(dataApp.Button, { onClick: onClose, children: "Fechar"})]})]})]});}
+function FavoritesPanel({operations,criteria,canSave,name,setName,onClose}) {const active=operations.value?.entries.filter(entry=>!entry.deletedAt)??[],deleted=operations.value?.entries.filter(entry=>entry.deletedAt)??[];return jsxRuntime.jsxs('div', { className: "am-analysis-panel", children: [jsxRuntime.jsx('p', { children: FAVORITES_DISCLOSURE}), jsxRuntime.jsx(PageNote, {originalTag:'p', className: "am-footnote", children: "Salva a aba e os filtros de qualquer área (e os controles de Ranking e Explorar) neste navegador. Não guarda resultados antigos nem edições de layout."                         }), operations.busy&&jsxRuntime.jsx('p', { role: "status", children: "Conferindo a versão da base…"    }), operations.error&&jsxRuntime.jsx('p', { role: "alert", className: "am-analysis-error", children: operations.error}), operations.notice&&jsxRuntime.jsx('p', { role: "status", children: operations.notice}), operations.selected?jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx('h3', { children: operations.selected.entry.name}), operations.selected.assessment.warnings.map((warning,index)=>jsxRuntime.jsx('p', { className: "am-analysis-warning", children: warning}, index)), operations.selected.assessment.issues.map((issue,index)=>jsxRuntime.jsx('p', { role: "alert", children: issue}, index)), operations.selected.assessment.criteria&&jsxRuntime.jsx(CriteriaSummary, { criteria: operations.selected.assessment.criteria,}), jsxRuntime.jsxs('div', { className: "am-analysis-buttons", children: [jsxRuntime.jsx(dataApp.Button, { disabled: !operations.selected.assessment.ok||operations.busy, onClick: ()=>{if(operations.reopen())onClose();}, children: "Reabrir com dados atuais"   }), jsxRuntime.jsx(dataApp.Button, { onClick: operations.cancelReview, children: "Voltar à lista"  })]})]}):jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [canSave?jsxRuntime.jsxs('form', { onSubmit: async event=>{event.preventDefault();if(await operations.save(name))setName('');}, children: [jsxRuntime.jsxs('label', { className: "am-analysis-input", children: ["Nome da análise"  , jsxRuntime.jsx('input', { value: name, onChange: event=>setName(event.target.value), maxLength: 100, placeholder: "Ex.: SUVs compactos no Sudeste"    , autoComplete: "off", required: true,})]}), jsxRuntime.jsx(dataApp.Button, { type: "submit", disabled: !name.trim()||!operations.ok||operations.busy, children: "Salvar critérios atuais"  })]}):jsxRuntime.jsx('p', { children: "Para salvar, abra a área desejada; Dados e metodologia não tem filtros para salvar. Você pode reabrir os favoritos abaixo."              }), jsxRuntime.jsxs('h3', { children: ["Favoritos", active.length?' · '+active.length:'']}), !active.length&&operations.ok&&jsxRuntime.jsx('p', { children: "Nenhuma análise salva neste navegador."    }), jsxRuntime.jsx('ul', { className: "am-analysis-list", children: active.map(entry=>jsxRuntime.jsxs('li', { children: [jsxRuntime.jsxs('span', { children: [jsxRuntime.jsx('strong', { children: entry.name}), jsxRuntime.jsxs('small', { children: [marketTabs.find(item=>item.id===entry.criteria.tabId)?.label??'Panorama', " · "  , entry.criteria.filters.date==='all'?'Histórico disponível':entry.criteria.filters.date]})]}), jsxRuntime.jsxs('div', { children: [jsxRuntime.jsx(dataApp.Button, { disabled: operations.busy, onClick: ()=>operations.review(entry), children: "Revisar"}), jsxRuntime.jsx(dataApp.Button, { onClick: ()=>operations.remove(entry.id), 'aria-label': 'Remover favorito '+entry.name, children: "Remover"})]})]}, entry.id))}), deleted.length>0&&jsxRuntime.jsxs('details', { children: [jsxRuntime.jsxs('summary', { children: ["Removidos · "  , deleted.length]}), jsxRuntime.jsx('p', { children: "Os critérios continuam guardados e podem ser restaurados."       }), jsxRuntime.jsx('ul', { className: "am-analysis-list", children: deleted.map(entry=>jsxRuntime.jsxs('li', { children: [jsxRuntime.jsx('strong', { children: entry.name}), jsxRuntime.jsx(dataApp.Button, { onClick: ()=>operations.restore(entry.id), 'aria-label': 'Restaurar favorito '+entry.name, children: "Restaurar"})]}, entry.id))})]}), jsxRuntime.jsxs('div', { className: "am-analysis-buttons", children: [jsxRuntime.jsx(dataApp.Button, { onClick: operations.refresh, children: "Atualizar lista" }), jsxRuntime.jsx(dataApp.Button, { onClick: onClose, children: "Fechar"})]})]})]});}
 let marketFooterContext;
 // BEGIN PAGE NOTES
 // Explicit editorial notes only. React owns both the inline reference and portal;
@@ -3020,7 +3070,7 @@ function getMarketFooterContext(){return marketFooterContext??(marketFooterConte
 function FooterAction({children}){const target=React.useContext(getMarketFooterContext());return target===false?null:target?require('react-dom').createPortal(children,target):children;}
 function AnalysisTools({criteria,manifest,manifestError,definitions,choiceRows,onHighlight,reportContext,unsupportedReport,onRankingRestore}) {
  const shell=dataApp.useDataApp(),[favoritesOpen,setFavoritesOpen]=React.useState(false),[reportOpen,setReportOpen]=React.useState(false),[name,setName]=React.useState('');
- const catalog=React.useMemo(()=>favoritesOpen?buildCriteriaCatalog({definitions,choiceRows,exploreOptions:EXPLORATION_OPTIONS,tabIds:['dashboard','explore','ranking']}):null,[favoritesOpen,definitions,choiceRows]);
+ const catalog=React.useMemo(()=>favoritesOpen?buildCriteriaCatalog({definitions,choiceRows,exploreOptions:EXPLORATION_OPTIONS,tabIds:marketTabs.map(item=>item.id)}):null,[favoritesOpen,definitions,choiceRows]);
  const ownerAllowed=true,operations=useSavedAnalyses({open:favoritesOpen,appId:shell.snapshot.id,manifest:manifestError?null:manifest,catalog,criteria,ownerAllowed,onRestore:value=>restoreAnalysisCriteria(shell,value,onHighlight,onRankingRestore)});
  const supported=favoriteSupportedTab(criteria.tabId),canReport=Boolean(reportContext?.kind);
  return jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(FooterAction,{children:jsxRuntime.jsxs('div', { className: "am-analysis-actions", children: [ownerAllowed&&jsxRuntime.jsxs('button', { className: "am-small-button", onClick: ()=>setFavoritesOpen(true), children: [jsxRuntime.jsx('span', { 'aria-hidden': "true", children: "☆"}), " Favoritos" ]}), canReport&&jsxRuntime.jsxs('button', { className: "am-small-button", disabled: reportContext.pending||Boolean(reportContext.error)||!reportContext.result, onClick: ()=>setReportOpen(true), children: [jsxRuntime.jsx(dataApp.Icon, { name: "download", size: 15,}), " Relatório executivo"  ]}), unsupportedReport&&jsxRuntime.jsx('span', { className: "am-footnote", children: unsupportedReport})]})}), jsxRuntime.jsx(dataApp.Dialog, { open: favoritesOpen&&ownerAllowed, onClose: ()=>setFavoritesOpen(false), title: "Análises favoritas" , initialFocusSelector: ".am-analysis-input input" , expanded: true, children: favoritesOpen&&ownerAllowed&&jsxRuntime.jsx(FavoritesPanel, { operations: operations, criteria: criteria, canSave: supported, name: name, setName: setName, onClose: ()=>setFavoritesOpen(false),})}), jsxRuntime.jsx(ExecutiveReportDialog, { open: reportOpen, onClose: ()=>setReportOpen(false), context: reportContext?{...reportContext,criteria,manifest,manifestError,source:shell.queries.registrations?.source}:null,})]});
@@ -3398,12 +3448,20 @@ function MarketNavigation({tab,explorationView,onNavigate}){
 }
 // Every area uses the same second row, outside the shell's primary header.
 // Leaf routes keep their URL contracts; analytical views keep their own state.
+// The address bar already carries the area and the filters: copy it to share this exact view.
+function CopyViewLink(){
+ const [status,setStatus]=React.useState(''),timer=React.useRef(null);
+ React.useEffect(()=>()=>clearTimeout(timer.current),[]);
+ const copy=async()=>{const url=globalThis.location?.href??'';let ok=false;try{await navigator.clipboard.writeText(url);ok=true;}catch{const area=document.createElement('textarea');area.value=url;area.setAttribute('readonly','');area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();try{ok=document.execCommand('copy');}catch{}area.remove();}
+  setStatus(ok?'Link copiado':'Copie o endereço do navegador');clearTimeout(timer.current);timer.current=setTimeout(()=>setStatus(''),2500);};
+ return jsxRuntime.jsxs('button',{type:'button',className:'am-nav-link am-copy-link',onClick:copy,title:'Copia um link com esta área e estes filtros',children:[jsxRuntime.jsx('span',{'aria-hidden':true,children:'🔗 '}),jsxRuntime.jsx('span',{'aria-live':'polite',children:status||'Copiar link'})]});
+}
 function MarketSubnavigation({tab,explorationView,onNavigate,evolutionView='executive',onEvolutionView,scenarioView='diagnostic',onScenarioView}){
  const location=navigationLocation(tab,explorationView);
  const options=tab==='history'?EVOLUTION_TABS:tab==='models'?SCENARIO_TABS:(location.group?.routes??[tab]).map(id=>({value:id,label:marketTabs.find(item=>item.id===id)?.label??location.label}));
  const value=tab==='history'?evolutionView:tab==='models'?scenarioView:location.leaf;
  const choose=tab==='history'?onEvolutionView:tab==='models'?onScenarioView:onNavigate;
- return jsxRuntime.jsxs('div',{className:'am-subnavigation',children:[jsxRuntime.jsx('nav',{'aria-label':'Análises de '+(location.group?.label??location.label),className:'am-leaf-nav',children:options.map(item=>jsxRuntime.jsx('button',{type:'button',className:'am-nav-link','aria-current':value===item.value?'page':undefined,onClick:()=>choose?.(item.value),children:item.label},item.value))}),jsxRuntime.jsx('nav',{'aria-label':'Documentação',className:'am-secondary-nav',children:jsxRuntime.jsx('button',{type:'button',className:'am-nav-link','aria-current':tab==='quality'?'page':undefined,onClick:()=>onNavigate('quality'),children:'Dados e metodologia'})})]});
+ return jsxRuntime.jsxs('div',{className:'am-subnavigation',children:[jsxRuntime.jsx('nav',{'aria-label':'Análises de '+(location.group?.label??location.label),className:'am-leaf-nav',children:options.map(item=>jsxRuntime.jsx('button',{type:'button',className:'am-nav-link','aria-current':value===item.value?'page':undefined,onClick:()=>choose?.(item.value),children:item.label},item.value))}),jsxRuntime.jsxs('nav',{'aria-label':'Compartilhar e documentação',className:'am-secondary-nav',children:[jsxRuntime.jsx(CopyViewLink,{}),typeof PrintButton==='function'&&jsxRuntime.jsx(PrintButton,{label:'Imprimir / PDF'}),jsxRuntime.jsx('button',{type:'button',className:'am-nav-link','aria-current':tab==='quality'?'page':undefined,onClick:()=>onNavigate('quality'),children:'Dados e metodologia'})]})]});
 }
 
 function MarketIdentity(){
@@ -3505,7 +3563,7 @@ function CatalogChart({type,rows=[],periods,measure='absolute',displayNames,high
  }else if(type==='pareto'){const data=catalogPareto(rows),dense=data.length>100,sample=catalogParetoSample(data),high=max(data.map(r=>r.value)),bw=PW/Math.max(1,data.length);if(!dense){axis(0,high,true);data.forEach((r,i)=>{const x=L+i*bw,y=T+PH-r.value/high*PH;out.push(rect(x+1,y,Math.max(.5,bw-2),T+PH-y,color(r.name),`${r.name}: ${fmt(r.value)}; participação ${fmt(r.share)}%; acumulado ${fmt(r.cumulative)}%`));if(data.length<=16)out.push(label(x+bw/2,T+PH+22,r.name,{textAnchor:'end',transform:`rotate(-35 ${x+bw/2} ${T+PH+22})`}));});}else{axis(0,100,true,'%');for(let i=0;i<=4;i++)out.push(label(L+PW*i/4,T+PH+24,fmt(Math.round(1+(data.length-1)*i/4)),{textAnchor:'middle'}));}const px=r=>L+(r.index+.5)*bw,py=r=>T+PH-r.cumulative/100*PH;out.push(mark('polyline',{points:sample.points.map(r=>`${px(r)},${py(r)}`).join(' '),fill:'none',stroke:'var(--text)',strokeWidth:2.5},'Participação acumulada por ordem decrescente de volume'));for(const r of sample.points)out.push(mark('circle',{cx:px(r),cy:py(r),r:sample.points.length>60?1.8:3,fill:'var(--text)'},`${r.index+1} entidades; ${r.name}: acumulado ${fmt(r.cumulative)}%`));if(!dense)for(let i=0;i<=4;i++)out.push(label(L+PW+12,T+PH-i/4*PH+4,(i*25)+'%'));foot=(dense?'Curva acumulada apenas: universo denso de '+fmt(data.length)+' entidades; até 200 pontos preservam limites exatos. Eixo X = número de entidades, ordenadas por volume. ':'Barras em ordem decrescente (eixo esquerdo). Linha acumulada (eixo direito). ')+sample.thresholds.map(t=>`${t.threshold}%: ${t.count===null?'não atingido':fmt(t.count)+' entidades'}`).join(' · ')+'. Não é curva de Lorenz.';
 
  }
- const hasData=type==='waffle'?catalogWaffle(rows).total>0:type==='waterfall'?catalogWaterfall(rows[0]).length>0:rows.some(r=>catalogFinite(r.value)||catalogFinite(r.a)||catalogFinite(r.b));return h('div',{className:'cc-chart'},[hasData?h('div',{className:'cc-scroll'},h('svg',{viewBox:`0 0 ${W} ${H}`,className:'cc-svg',role:'group','aria-label':`Gráfico ${type}`},out)):h('div',{className:'cc-empty',role:'status'},'Sem dados válidos para este gráfico. Ajuste o período ou os filtros.'),legend.length?h('div',{className:'cc-legend'},[...new Set(legend)].map(n=>h('span',{},[h('i',{style:{background:color(n)}}),n]))):null,h(PageNote,{className:'cc-method'},foot)]);
+ const hasData=type==='waffle'?catalogWaffle(rows).total>0:type==='waterfall'?catalogWaterfall(rows[0]).length>0:rows.some(r=>catalogFinite(r.value)||catalogFinite(r.a)||catalogFinite(r.b));return h('div',{className:'cc-chart','data-export-root':'','data-export-title':typeof CATALOG_FORMATS!=='undefined'?CATALOG_FORMATS[type]??'':''},[hasData&&typeof ExportImageButton==='function'?h(ExportImageButton,{name:'grafico-'+type}):null,hasData?h('div',{className:'cc-scroll'},h('svg',{viewBox:`0 0 ${W} ${H}`,className:'cc-svg',role:'group','aria-label':`Gráfico ${type}`},out)):h('div',{className:'cc-empty',role:'status'},'Sem dados válidos para este gráfico. Ajuste o período ou os filtros.'),legend.length?h('div',{className:'cc-legend'},[...new Set(legend)].map(n=>h('span',{},[h('i',{style:{background:color(n)}}),n]))):null,h(PageNote,{className:'cc-method'},foot)]);
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={catalogNiceTicks,catalogPeriodLabel,catalogColorMap,catalogSpreadLabels,catalogFinite,catalogNumber,catalogColor,catalogPositive,catalogSum,catalogAggregate,catalogGroupTail,catalogPareto,catalogParetoSample,catalogParetoSeries,catalogDeltas,catalogWaterfall,catalogMekko,catalogTreemap,catalogWaffle,catalogRanks,catalogStack,catalogSankey,catalogBubbleRadius,CatalogChart};
 
@@ -4374,7 +4432,7 @@ function AnimationRace({frames=[],frame=0,dimension='marca',topN=10,pinMIT=false
 }
 function AnimationBubbles({frames=[],frame=0,dimension='marca',topN=10,trail=false}){
  const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs,index=animationFrameIndex(frames,frame),current=animationFrame(frames,frame),all=animationBubbleRows(current,dimension),ranked=animationRankRows(current,dimension,{topN}),selectedNames=new Set(ranked.display.map(r=>r.name)),selected=all.filter(r=>selectedNames.has(r.name)),scales=React.useMemo(()=>animationBubbleScales(frames,dimension),[frames,dimension]),pool=React.useMemo(()=>animationRacePool(frames,dimension,{topN}),[frames,dimension,topN]),lookup=new Map(all.map(r=>[r.name,r])),placed=animationBubbleLabels(selected,scales),omitted=selected.filter(r=>!animationBubblePoint(r,scales)),ticks=Array.from({length:5},(_,i)=>i/4),tableRows=animationChartRows({view:'bubbles',frames,frame,dimension});
- return hs('section',{className:'ac-chart ac-bubbles','aria-label':'Bolhas de participação e crescimento anual',children:[h(AnimationFrameMeta,{frame:current}),h('p',{className:'ac-axis-note',children:'X: participação no universo · Y: variação anual (YoY) · área da bolha: volume em unidades. Eixos e área mantêm a mesma escala em toda a janela; ▲ marca bolhas acima da escala (valor real no rótulo).'}),h('div',{className:'ac-chart-scroll',children:hs('svg',{className:'ac-bubble-svg',viewBox:'0 0 960 540',role:'img','aria-label':'Participação no eixo horizontal, variação anual no eixo vertical e área proporcional ao volume. Consulte a tabela completa.',children:[h('title',{children:'Participação × crescimento anual · '+animationMonth(current)}),h('desc',{children:'Bolhas sem base anterior comparável não são desenhadas. Trilhas interrompem em lacunas e mostram no máximo seis meses.'}),...ticks.map(t=>{const x=100+t*760;return hs('g',{children:[h('line',{x1:x,x2:x,y1:90,y2:440,className:'ac-grid'}),h('text',{x,y:467,textAnchor:'middle',children:animationPercent(t*scales.x[1],1)})]},'x'+t);}),...ticks.map(t=>{const value=scales.y[0]+t*(scales.y[1]-scales.y[0]),y=440-t*350;return hs('g',{children:[h('line',{x1:100,x2:860,y1:y,y2:y,className:'ac-grid'}),h('text',{x:85,y:y+4,textAnchor:'end',children:animationSigned(value,1)})]},'y'+t);}),h('text',{x:480,y:506,textAnchor:'middle',className:'ac-axis-title',children:'Participação no universo (%)'}),h('text',{x:100,y:28,className:'ac-axis-title',children:'Variação anual de volume (%)'}),scales.y[0]<=0&&scales.y[1]>=0&&h('line',{x1:100,x2:860,y1:440-(0-scales.y[0])/(scales.y[1]-scales.y[0])*350,y2:440-(0-scales.y[0])/(scales.y[1]-scales.y[0])*350,className:'ac-zero'}),trail&&pool.rows.filter(r=>selectedNames.has(r.name)).flatMap(row=>animationTrail(frames,index,row.name,dimension,scales).map((d,k)=>h('path',{d,fill:'none',stroke:animationEntityColor(row.name,row),strokeWidth:2,strokeOpacity:.45,className:'ac-trail'},row.name+'|'+k))),...pool.rows.map(base=>{const row=lookup.get(base.name),p=selectedNames.has(base.name)?animationBubblePoint(row,scales):null,lab=p?placed.get(base.name):null;return hs('g',{className:'ac-bubble-entity',style:{transform:'translate('+(p?.x??100)+'px,'+(p?.y??440)+'px)',opacity:p?1:0},'data-entity':base.name,'aria-hidden':p?undefined:true,children:[h('circle',{r:p?.r??0,style:{r:(p?.r??0)+'px'},fill:animationEntityColor(base.name,row??base),fillOpacity:.68,stroke:animationEntityColor(base.name,row??base),strokeWidth:2,tabIndex:p?0:-1,role:'img','aria-label':base.name+': volume '+animationNumber(row?.count)+', participação '+animationPercent(row?.share)+', YoY '+animationSigned(row?.yoy),children:h('title',{children:base.name+'\nVolume: '+animationNumber(row?.count)+'\nParticipação: '+animationExactPercent(row?.share)+'\nAno anterior: '+animationNumber(row?.priorCount)+'\nYoY: '+animationExactPercent(row?.yoy)})}),h('text',{x:lab?lab.lx-p.x:0,y:lab?lab.ly-p.y:-(p?.r??0)-8,textAnchor:lab?.anchor??'middle',className:'ac-bubble-label',style:{opacity:p&&lab?1:0},children:lab?.text??''})]},base.name);}),h('text',{x:860,y:28,textAnchor:'end',children:'Bolha máxima: '+animationNumber(scales.maxCount)+' unidades'})]})}),h('p',{className:'ac-disclosure',children:'Top '+ranked.topN+' por volume. '+(selected.length-omitted.length)+' bolhas desenhadas; '+omitted.length+' entidade(s) do Top sem YoY comparável. Base anterior ausente ou zero gera N/D. '+(trail?'Trilha: últimos seis meses, incluindo o atual; lacunas interrompem o traço.':'Trilha desativada.')}),h(AnimationChartTable,{rows:tableRows,caption:'Todas as entidades · '+animationPeriod(current)+' · valores do quadro, sem interpolação',columns:[{key:'name',label:'Entidade'},{key:'count',label:'Volume',format:animationNumber},{key:'share',label:'Participação',format:animationExactPercent},{key:'priorCount',label:'Mesmo período anterior',format:animationNumber},{key:'yoy',label:'YoY',format:animationExactPercent},{key:'yoyStatus',label:'Comparabilidade'},{key:'denominator',label:'Denominador',format:animationNumber}]})]});
+ return hs('section',{className:'ac-chart ac-bubbles','aria-label':'Bolhas de participação e crescimento anual','data-export-root':'','data-export-title':'Participação × crescimento · '+animationPeriod(current),children:[h(AnimationFrameMeta,{frame:current}),typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'bolhas-'+String(current?.month??'')}),h('p',{className:'ac-axis-note',children:'X: participação no universo · Y: variação anual (YoY) · área da bolha: volume em unidades. Eixos e área mantêm a mesma escala em toda a janela; ▲ marca bolhas acima da escala (valor real no rótulo).'}),h('div',{className:'ac-chart-scroll',children:hs('svg',{className:'ac-bubble-svg',viewBox:'0 0 960 540',role:'img','aria-label':'Participação no eixo horizontal, variação anual no eixo vertical e área proporcional ao volume. Consulte a tabela completa.',children:[h('title',{children:'Participação × crescimento anual · '+animationMonth(current)}),h('desc',{children:'Bolhas sem base anterior comparável não são desenhadas. Trilhas interrompem em lacunas e mostram no máximo seis meses.'}),...ticks.map(t=>{const x=100+t*760;return hs('g',{children:[h('line',{x1:x,x2:x,y1:90,y2:440,className:'ac-grid'}),h('text',{x,y:467,textAnchor:'middle',children:animationPercent(t*scales.x[1],1)})]},'x'+t);}),...ticks.map(t=>{const value=scales.y[0]+t*(scales.y[1]-scales.y[0]),y=440-t*350;return hs('g',{children:[h('line',{x1:100,x2:860,y1:y,y2:y,className:'ac-grid'}),h('text',{x:85,y:y+4,textAnchor:'end',children:animationSigned(value,1)})]},'y'+t);}),h('text',{x:480,y:506,textAnchor:'middle',className:'ac-axis-title',children:'Participação no universo (%)'}),h('text',{x:100,y:28,className:'ac-axis-title',children:'Variação anual de volume (%)'}),scales.y[0]<=0&&scales.y[1]>=0&&h('line',{x1:100,x2:860,y1:440-(0-scales.y[0])/(scales.y[1]-scales.y[0])*350,y2:440-(0-scales.y[0])/(scales.y[1]-scales.y[0])*350,className:'ac-zero'}),trail&&pool.rows.filter(r=>selectedNames.has(r.name)).flatMap(row=>animationTrail(frames,index,row.name,dimension,scales).map((d,k)=>h('path',{d,fill:'none',stroke:animationEntityColor(row.name,row),strokeWidth:2,strokeOpacity:.45,className:'ac-trail'},row.name+'|'+k))),...pool.rows.map(base=>{const row=lookup.get(base.name),p=selectedNames.has(base.name)?animationBubblePoint(row,scales):null,lab=p?placed.get(base.name):null;return hs('g',{className:'ac-bubble-entity',style:{transform:'translate('+(p?.x??100)+'px,'+(p?.y??440)+'px)',opacity:p?1:0},'data-entity':base.name,'aria-hidden':p?undefined:true,children:[h('circle',{r:p?.r??0,style:{r:(p?.r??0)+'px'},fill:animationEntityColor(base.name,row??base),fillOpacity:.68,stroke:animationEntityColor(base.name,row??base),strokeWidth:2,tabIndex:p?0:-1,role:'img','aria-label':base.name+': volume '+animationNumber(row?.count)+', participação '+animationPercent(row?.share)+', YoY '+animationSigned(row?.yoy),children:h('title',{children:base.name+'\nVolume: '+animationNumber(row?.count)+'\nParticipação: '+animationExactPercent(row?.share)+'\nAno anterior: '+animationNumber(row?.priorCount)+'\nYoY: '+animationExactPercent(row?.yoy)})}),h('text',{x:lab?lab.lx-p.x:0,y:lab?lab.ly-p.y:-(p?.r??0)-8,textAnchor:lab?.anchor??'middle',className:'ac-bubble-label',style:{opacity:p&&lab?1:0},children:lab?.text??''})]},base.name);}),h('text',{x:860,y:28,textAnchor:'end',children:'Bolha máxima: '+animationNumber(scales.maxCount)+' unidades'})]})}),h('p',{className:'ac-disclosure',children:'Top '+ranked.topN+' por volume. '+(selected.length-omitted.length)+' bolhas desenhadas; '+omitted.length+' entidade(s) do Top sem YoY comparável. Base anterior ausente ou zero gera N/D. '+(trail?'Trilha: últimos seis meses, incluindo o atual; lacunas interrompem o traço.':'Trilha desativada.')}),h(AnimationChartTable,{rows:tableRows,caption:'Todas as entidades · '+animationPeriod(current)+' · valores do quadro, sem interpolação',columns:[{key:'name',label:'Entidade'},{key:'count',label:'Volume',format:animationNumber},{key:'share',label:'Participação',format:animationExactPercent},{key:'priorCount',label:'Mesmo período anterior',format:animationNumber},{key:'yoy',label:'YoY',format:animationExactPercent},{key:'yoyStatus',label:'Comparabilidade'},{key:'denominator',label:'Denominador',format:animationNumber}]})]});
 }
 function AnimationMix({frames=[],frame=0,kind='technology'}){
  const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs,current=animationFrame(frames,frame),rows=animationMixRows(current,kind),order=React.useMemo(()=>animationMixOrder(frames,kind),[frames,kind]),lookup=new Map(rows.map(r=>[r.name,r])),tableRows=animationChartRows({view:'mix',frames,frame,kind});
@@ -4816,7 +4874,7 @@ function TopThreeMap({tops,states}){
  const rows=[...ufs].sort((a,b)=>tops.get(b.uf).total-tops.get(a.uf).total);
  const shown=new Map();ufs.forEach(s=>tops.get(s.uf).top.forEach(x=>shown.set(x.b,(shown.get(x.b)||0)+x.v)));
  const legendBrands=[...shown.keys()].filter(tbmKnown).sort((a,b)=>shown.get(b)-shown.get(a)),hasOther=[...shown.keys()].some(b=>!tbmKnown(b));
- return hs('div',{className:'tbm-card',children:[
+ return hs('div',{className:'tbm-card','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-marcas'}),
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Top 3 marcas por estado'}),h('p',{children:'Cada estado em três faixas, da 1ª à 3ª marca, com largura proporcional às vendas de cada uma.'})]}),
    h('div',{className:'tbm-seg',role:'group','aria-label':'Forma do mapa',children:[['bands','Faixas'],['multi','1º · 2º · 3º lugar']].map(([v,l])=>h('button',{type:'button','aria-pressed':mode===v,onClick:()=>setMode(v),children:l},v))})]}),
   hs('div',{className:'tbm-legend',children:legendBrands.map(b=>hs('span',{children:[h('i',{style:{background:tbmColor(b)}}),tbmName(b)]},b)).concat(hasOther?[hs('span',{children:[h('i',{className:'tbm-hatch'}),'Outras marcas (nome no mapa e na lista)']},'o')]:[])}),
@@ -4837,7 +4895,7 @@ function BrandStrengthMap({result,states}){
  if(!data)return null;
  const fill=r=>{if(!r)return 'var(--muted)';const k=Math.max(-1,Math.min(1,(r.index-100)/60)),pct=Math.round(Math.abs(k)*85);return pct<4?'var(--muted)':'color-mix(in srgb,'+(k>0?'var(--chart-1)':'var(--chart-2)')+' '+pct+'%,var(--muted))';};
  const sorted=[...data.rows.values()].sort((a,b)=>b.index-a.index),best=sorted.slice(0,3).map(r=>r.uf),hr=hover?data.rows.get(hover):null;
- return hs('div',{className:'tbm-card',children:[
+ return hs('div',{className:'tbm-card','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-marcas'}),
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Onde '+tbmName(chosen)+' é mais forte: '+best.join(', ')}),h('p',{children:'Participação da marca em cada estado comparada com a média do Brasil ('+tbmPct(data.national)+'). Azul: acima da média; âmbar: abaixo.'})]}),
    hs('label',{className:'tbm-range',children:['Marca',h('select',{value:chosen,onChange:e=>setBrand(e.target.value),'aria-label':'Marca',children:brands.map(b=>h('option',{value:b,children:tbmName(b)},b))})]})]}),
   hs('div',{className:'tbm-strength',children:[
@@ -4880,7 +4938,7 @@ function SpikeMap({spikes,states,geo,channelLabel}){
   for(const i of f.order){const [x,y]=f.pts[i],hh=cur[i]*f.pr.Hz;const d=(py>=y-hh&&py<=y+2)?Math.abs(px-x):Math.hypot(px-x,py-(py<y-hh?y-hh:y));if(d<=bd){bd=d;best=i;}}
   setHover(best);setTip(best==null?null:{i:best,x:e.clientX,y:e.clientY});};
  const top=React.useMemo(()=>{let t=-1;values.forEach((v,i)=>{if(t<0||v>values[t])t=i;});const sum=values.reduce((a,b)=>a+b,0);return t<0?null:{name:spikes.names[t],v:values[t],share:sum>0?values[t]/sum:null};},[values,spikes]);
- return hs('div',{className:'tbm-card',children:[
+ return hs('div',{className:'tbm-card','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-marcas'}),
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Espigões por município'}),h('p',{children:'Altura proporcional aos emplacamentos de cada município, '+channelLabel+'.'})]}),
    h('div',{className:'tbm-seg',role:'group','aria-label':'Medida dos espigões',children:[['market','Mercado'],['mit','Mitsubishi'],['network','Rede × oportunidade']].map(([v,l])=>h('button',{type:'button','aria-pressed':color===v,onClick:()=>setColor(v),children:l},v))})]}),
   h(OrbitControls,{orbit,home}),
@@ -4913,7 +4971,7 @@ function ExtrudedStates({states,geo,tops,ufTotals,population,channelLabel}){
  const move=e=>{const f=frame.current;if(!f||orbit.dragging()){setTip(null);return;}const r=canvas.current.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,ctx=canvas.current.getContext('2d');let hit=null;
   for(let k=f.drawn.length-1;k>=0;k--){const [i,hh]=f.drawn[k];ctx.setTransform(...f.pr.mat(1,hh));if(ctx.isPointInPath(states[i].p,px,py)){hit=i;break;}}
   ctx.setTransform(1,0,0,1,0,0);setHover(hit);setTip(hit==null?null:{i:hit,x:e.clientX,y:e.clientY});};
- return hs('div',{className:'tbm-card',children:[
+ return hs('div',{className:'tbm-card','data-export-root':'',children:[typeof ExportImageButton==='function'&&h(ExportImageButton,{name:'mapa-marcas'}),
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Brasil em 3D'}),h('p',{children:'Altura pela medida escolhida, '+channelLabel+'; o topo tem a cor da marca líder do estado.'})]}),
    h('div',{className:'tbm-seg',role:'group','aria-label':'Medida da altura',children:[['volume','Volume'],['per1000','Por mil habitantes']].map(([v,l])=>h('button',{type:'button','aria-pressed':metric===v,onClick:()=>setMetric(v),children:l},v))})]}),
   h(OrbitControls,{orbit,home}),
@@ -5184,6 +5242,229 @@ function chartPlaceLabels(candidates, {charWidth = 6.3, height = 12, bounds = {x
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = {chartNiceTicks, chartRobustRange, chartPlaceLabels};
 // END CHART SCALES
+// BEGIN HISTORY DATA
+// Ten-year monthly history from data/history/ (built by scripts/build-history.py).
+// Long-range panels read these small aggregates instead of 129 monthly cubes. The
+// global filters are applied when the file has that dimension; any other active
+// filter is reported back so each panel can say what it ignores.
+const HISTORY_FILES={national:['segmento','marca','grupo_modelo','bd_segmento','bd_carroceria','combustivel','propulsao','tipo_venda'],uf:['uf','segmento','marca','bd_segmento','bd_carroceria','combustivel','propulsao','tipo_venda']};
+const HISTORY_REGIONS={Norte:['AC','AM','AP','PA','RO','RR','TO'],Nordeste:['AL','BA','CE','MA','PB','PE','PI','RN','SE'],'Centro-Oeste':['DF','GO','MS','MT'],Sudeste:['ES','MG','RJ','SP'],Sul:['PR','RS','SC']};
+const HISTORY_FILTER_LABELS={uf:'UF',regiao:'Região',municipio:'Município',marca:'Marca',modelo:'Modelo',grupo_modelo:'Grupo de modelos',combustivel:'Combustível',segmento:'Segmento',subsegmento:'Subsegmento',tipo_venda:'Canal de venda',nacionalidade:'Nacionalidade',ano_fabricacao:'Ano de fabricação',potencia:'Potência',capacidade_carga:'Capacidade de carga',capacidade_passageiros:'Capacidade de passageiros',bd_segmento:'Porte',bd_carroceria:'Carroceria',bd_classe:'Classe BD',bd_macro:'Macrosegmento BD',bd_combustivel:'Tecnologia BD',bd_origem:'Origem do veículo',propulsao:'Propulsão'};
+const historyCache=new Map();
+function historySelection(value){if(value==null||value===''||value==='all')return [];const list=Array.isArray(value)?value:[value];return list.includes('all')?[]:list.map(String);}
+// Which file serves these filters, and which active filters it cannot apply.
+function historyPlan(filters={}){
+ const active=Object.keys(filters).filter(k=>!['date','population'].includes(k)&&historySelection(filters[k]).length);
+ const territorial=active.some(k=>k==='uf'||k==='regiao'),file=territorial?'uf':'national',dims=HISTORY_FILES[file];
+ const ignored=active.filter(k=>!(dims.includes(k)||(k==='regiao'&&file==='uf')));
+ return {file,active,ignored,ignoredLabels:ignored.map(k=>HISTORY_FILTER_LABELS[k]??k)};
+}
+async function historyFetch(file,base){
+ const url=new URL('history/'+file+'.json.gz',base).href;
+ if(!historyCache.has(url))historyCache.set(url,(async()=>{
+  const response=await fetch(url,{credentials:'same-origin',redirect:'error'});if(!response.ok)throw Error('Histórico indisponível (HTTP '+response.status+').');
+  const bytes=new Uint8Array(await response.arrayBuffer());
+  const text=bytes[0]===31&&bytes[1]===139?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);
+  return JSON.parse(text);
+ })().catch(error=>{historyCache.delete(url);throw error;}));
+ return historyCache.get(url);
+}
+// Rows that pass the filters, as {month index, row}. `keep` lists dims to keep for grouping.
+function historyRows(data,filters={}){
+ const cols=data.columns,dims=data.dimensions,allowed=[];
+ for(const [i,dim] of dims.entries()){
+  let wanted=historySelection(filters[dim]);
+  if(dim==='uf'){const regions=historySelection(filters.regiao).flatMap(r=>HISTORY_REGIONS[r]??[]);if(regions.length)wanted=wanted.length?wanted.filter(u=>regions.includes(u)):regions;}
+  if(!wanted.length)continue;
+  const set=new Set(wanted),dict=data.dictionaries[dim];allowed.push([i+1,new Uint8Array(dict.length).map((_,code)=>set.has(dict[code])?1:0)]);
+ }
+ const out=[];for(const row of data.rows){let ok=true;for(const [c,mask] of allowed)if(!mask[row[c]]){ok=false;break;}if(ok)out.push(row);}
+ return {rows:out,countIndex:cols.length-1};
+}
+// Monthly totals (filtered) next to the market total of the same month.
+function historyMonthly(data,filters={},groupBy=null){
+ const {rows,countIndex}=historyRows(data,filters),gi=groupBy?data.dimensions.indexOf(groupBy)+1:0,dict=groupBy?data.dictionaries[groupBy]:null;
+ const months=data.months.map(m=>({month:m.month,count:0,market:m.total,complete:m.complete,groups:groupBy?new Map():null}));
+ for(const row of rows){const m=months[row[0]],n=row[countIndex];m.count+=n;if(gi){const name=dict[row[gi]];m.groups.set(name,(m.groups.get(name)??0)+n);}}
+ return months;
+}
+// Business days: Monday–Friday minus national holidays, Carnaval (Monday and Tuesday),
+// Good Friday and Corpus Christi, the days registrations offices usually close.
+function historyEaster(year){const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1;return Date.UTC(year,month-1,day);}
+function historyHolidays(year){
+ const iso=t=>new Date(t).toISOString().slice(0,10),easter=historyEaster(year),day=86400000;
+ const fixed=['01-01','04-21','05-01','09-07','10-12','11-02','11-15','12-25',...(year>=2024?['11-20']:[])].map(d=>year+'-'+d);
+ return new Set([...fixed,iso(easter-48*day),iso(easter-47*day),iso(easter-2*day),iso(easter+60*day)]);
+}
+function historyWorkingDays(month){
+ const y=+month.slice(0,4),m=+month.slice(5,7),holidays=historyHolidays(y),last=new Date(Date.UTC(y,m,0)).getUTCDate();let n=0;
+ for(let d=1;d<=last;d++){const t=new Date(Date.UTC(y,m-1,d)),w=t.getUTCDay();if(w!==0&&w!==6&&!holidays.has(t.toISOString().slice(0,10)))n++;}
+ return n;
+}
+// End month of the global period (history panels look back from it).
+function historyEndMonth(filters,months){const d=String(filters?.date??'');const end=/\.\.(\d{4}-\d{2})/.exec(d)?.[1]??(/^\d{4}-\d{2}/.exec(d)?.[0]);const list=months.map(m=>m.month);return end&&list.includes(end)?end:list.at(-1);}
+function useHistory(filters,base,enabled=true){
+ const plan=historyPlan(filters),[state,setState]=React.useState({data:null,error:null,file:null});
+ React.useEffect(()=>{if(!enabled)return;let alive=true;historyFetch(plan.file,base).then(data=>{if(alive)setState({data,error:null,file:plan.file});}).catch(error=>{if(alive)setState({data:null,error:error.message,file:plan.file});});return ()=>{alive=false;};},[plan.file,base,enabled]);
+ return {...state,pending:enabled&&state.file!==plan.file,plan};
+}
+function HistoryScopeNote({plan,extra}){
+ return jsxRuntime.jsx('p',{className:'hx-scope',children:'Histórico mensal pré-calculado (2016 em diante), com os filtros globais'+(plan.ignored.length?' exceto '+plan.ignoredLabels.join(', ')+', que este painel não consegue aplicar':'')+'.'+(extra?' '+extra:'')});
+}
+if(typeof module!=='undefined'&&module.exports)module.exports={HISTORY_FILES,HISTORY_REGIONS,historyPlan,historyRows,historyMonthly,historyEaster,historyHolidays,historyWorkingDays,historyEndMonth,historySelection};
+// END HISTORY DATA
+// BEGIN MARKET PULSE
+// "Pulso do recorte": the five numbers people look for first, on every area, and
+// "Perguntas rápidas" on Panorama. Both read the same two market queries: the
+// market without brand/model filters, and the brand in focus inside it.
+const PULSE_BRAND_FILTERS=['marca','modelo','grupo_modelo'];
+const pulseFormat={
+ number:v=>v==null||!Number.isFinite(v)?'—':new Intl.NumberFormat('pt-BR').format(Math.round(v)),
+ percent:(v,d=1)=>v==null||!Number.isFinite(v)?'—':new Intl.NumberFormat('pt-BR',{style:'percent',minimumFractionDigits:d,maximumFractionDigits:d}).format(v),
+ signed:(v,d=1)=>v==null||!Number.isFinite(v)?'—':(v>0?'+':'')+new Intl.NumberFormat('pt-BR',{style:'percent',minimumFractionDigits:d,maximumFractionDigits:d}).format(v),
+ pp:v=>v==null||!Number.isFinite(v)?'—':(v>0?'+':'')+new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v*100)+' pp'
+};
+// Focus: the single brand the user filtered, otherwise Mitsubishi.
+function pulseFocusBrand(filters){const list=(Array.isArray(filters?.marca)?filters.marca:filters?.marca&&filters.marca!=='all'?[filters.marca]:[]).filter(v=>v!=='all');return list.length===1?String(list[0]):'MITSUBISHI';}
+function pulseFilters(filters,focus){const market={...filters};for(const k of PULSE_BRAND_FILTERS)delete market[k];return {market,focus:{...market,marca:[focus]}};}
+function pulseRange(result,filters){const r=result?.range??result?.requestedRange;if(r?.start&&r?.end)return r;const m=/^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/.exec(String(filters?.date??''));return m?{start:m[1],end:m[2]}:null;}
+function pulseWorkingDays(range){
+ if(!range?.start||!range?.end||typeof historyHolidays!=='function')return null;
+ let n=0,cache=new Map();for(let t=Date.parse(range.start+'T12:00:00Z'),end=Date.parse(range.end+'T12:00:00Z');t<=end;t+=86400000){const d=new Date(t),y=d.getUTCFullYear(),w=d.getUTCDay();if(!cache.has(y))cache.set(y,historyHolidays(y));if(w!==0&&w!==6&&!cache.get(y).has(d.toISOString().slice(0,10)))n++;}
+ return n||null;
+}
+function pulseShiftYear(range){if(!range)return null;const shift=d=>{const y=+d.slice(0,4)-1,rest=d.slice(4);const t=new Date(Date.UTC(y,+rest.slice(1,3)-1,+rest.slice(4,6)));return t.getUTCMonth()===+rest.slice(1,3)-1?t.toISOString().slice(0,10):new Date(Date.UTC(y,+rest.slice(1,3),0)).toISOString().slice(0,10);};return {start:shift(range.start),end:shift(range.end)};}
+function pulseModel(market,focusResult,focus,filters){
+ if(!market)return null;
+ const brands=(market.groups?.marca??[]).filter(b=>b.count>0),i=brands.findIndex(b=>b.name===focus);
+ const previous=[...(market.groups?.marca??[])].filter(b=>(b.previous??0)>0).sort((a,b)=>b.previous-a.previous||a.name.localeCompare(b.name)),pi=previous.findIndex(b=>b.name===focus);
+ const focusTotal=focusResult?.total??(i>=0?brands[i].count:null),share=market.total>0&&focusTotal!=null?focusTotal/market.total:null;
+ const shareYear=focusResult?.year!=null&&market.year>0?focusResult.year/market.year:null;
+ const range=pulseRange(market,filters),yearRange=market.yearRange??pulseShiftYear(range),days=pulseWorkingDays(range),yearDays=pulseWorkingDays(yearRange);
+ const pace=days&&market.total!=null?market.total/days:null,paceYear=yearDays&&market.year!=null?market.year/yearDays:null;
+ const ufs=new Map((market.groups?.uf??[]).map(r=>[r.name,r.count])),strong=(focusResult?.groups?.uf??[]).map(r=>({name:r.name,count:r.count,share:ufs.get(r.name)>0?r.count/ufs.get(r.name):null})).filter(r=>r.share!=null&&r.count>=Math.max(50,(focusTotal??0)*0.03)).sort((a,b)=>b.share-a.share);
+ const electrified=(market.groups?.propulsao??[]).filter(r=>['HEV','PHEV','BEV','MHEV'].includes(r.name)).reduce((s,r)=>s+r.count,0);
+ return {focus,range,market:market.total,marketYearChange:market.yearChangeRate,marketPreviousChange:market.changeRate,focusTotal,focusYearChange:focusResult?.yearChangeRate??null,share,shareYearChange:share!=null&&shareYear!=null?share-shareYear:null,
+  rank:i>=0?i+1:null,brands:brands.length,previousRank:pi>=0?pi+1:null,pace,paceYearChange:pace!=null&&paceYear>0?pace/paceYear-1:null,days,yearDays,
+  strongestUF:strong[0]??null,topSegment:(focusResult?.groups?.bd_segmento??[])[0]??null,electrifiedShare:market.total>0?electrified/market.total:null,complete:market.complete!==false};
+}
+function useMarketPulse(filters,enabled=true){
+ const focus=pulseFocusBrand(filters),split=React.useMemo(()=>pulseFilters(filters,focus),[canonicalFilterKey(filters),focus]);
+ const market=useMarketData(split.market,enabled,'pulse',false),brand=useMarketData(split.focus,enabled,'pulse',false);
+ const model=React.useMemo(()=>pulseModel(market.result,brand.result,focus,filters),[market.result,brand.result,focus]);
+ return {model,pending:market.pending||brand.pending,error:market.error||brand.error,focus};
+}
+function PulseChange({value,format='signed',label}){
+ if(value==null||!Number.isFinite(value))return jsxRuntime.jsx('small',{className:'mp-change',children:label?label+': —':'—'});
+ const dir=value>0?'up':value<0?'down':'flat';
+ return jsxRuntime.jsxs('small',{className:'mp-change mp-'+dir,children:[jsxRuntime.jsx('span',{'aria-hidden':true,children:dir==='up'?'▲ ':dir==='down'?'▼ ':'■ '}),pulseFormat[format](value),label?' '+label:'']});
+}
+function MarketPulse({filters,enabled=true}){
+ const {model,pending,error,focus}=useMarketPulse(filters,enabled),name=focus.charAt(0)+focus.slice(1).toLowerCase();
+ if(error)return null;
+ const tile=(key,label,value,change,title)=>jsxRuntime.jsxs('div',{className:'mp-tile',title,children:[jsxRuntime.jsx('span',{className:'mp-label',children:label}),jsxRuntime.jsx('strong',{children:pending||!model?'…':value}),pending||!model?jsxRuntime.jsx('small',{className:'mp-change',children:' '}):change]},key);
+ const br=d=>d?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):'';
+ return jsxRuntime.jsxs('section',{className:'mp-strip','aria-label':'Pulso do recorte','aria-busy':pending,'data-period':model?.range?br(model.range.start)+' a '+br(model.range.end):undefined,children:[
+  tile('market','Mercado no período',pulseFormat.number(model?.market),jsxRuntime.jsx(PulseChange,{value:model?.marketYearChange,label:'vs ano anterior'}),'Emplacamentos com os filtros globais, sem filtros de marca e modelo.'),
+  tile('focus',name,pulseFormat.number(model?.focusTotal),jsxRuntime.jsx(PulseChange,{value:model?.focusYearChange,label:'vs ano anterior'}),'Emplacamentos da marca em foco no mesmo recorte.'),
+  tile('share','Participação '+name,pulseFormat.percent(model?.share,2),jsxRuntime.jsx(PulseChange,{value:model?.shareYearChange,format:'pp',label:'vs ano anterior'}),'Marca em foco ÷ mercado do recorte.'),
+  tile('rank','Posição entre as marcas',model?.rank?model.rank+'º de '+model.brands:'—',jsxRuntime.jsx('small',{className:'mp-change',children:model?.previousRank?'Período anterior: '+model.previousRank+'º':'Sem período anterior comparável'}),'Ranking por volume no recorte, sem filtros de marca.'),
+  tile('pace','Ritmo por dia útil',model?.pace!=null?pulseFormat.number(model.pace)+'/dia':'—',jsxRuntime.jsx(PulseChange,{value:model?.paceYearChange,label:'vs ano anterior'}),'Mercado ÷ dias úteis do período ('+(model?.days??'—')+' dias; sem fins de semana, feriados nacionais, Carnaval e Corpus Christi). Compara períodos com números de dias úteis diferentes.')
+ ]});
+}
+// Panorama: questions first, each with a live one-line answer and a way into the area.
+function QuickQuestions({filters,onNavigate,onEvolutionView}){
+ const {model,pending,focus}=useMarketPulse(filters),name=focus.charAt(0)+focus.slice(1).toLowerCase(),f=pulseFormat;
+ const go=(tab,view)=>()=>{onNavigate?.(tab);if(view)onEvolutionView?.(view);globalThis.scrollTo?.({top:0,behavior:'smooth'});};
+ const answer=text=>pending||!model?'Calculando…':text;
+ const cards=[
+  ['gaining','A '+name+' está ganhando espaço?',answer('Participação de '+f.percent(model?.share,2)+' no período, '+f.pp(model?.shareYearChange)+' sobre o mesmo período do ano anterior.'),'Ver evolução',go('history','growth')],
+  ['strong','Onde a '+name+' é mais forte?',answer(model?.strongestUF?model.strongestUF.name+': '+f.percent(model.strongestUF.share,1)+' do mercado local ('+f.number(model.strongestUF.count)+' emplacamentos).':'Sem volume suficiente por UF neste recorte.'),'Ver territórios',go('geography')],
+  ['segment','Em que segmento a '+name+' joga?',answer(model?.topSegment?model.topSegment.name+' concentra '+f.percent(model.focusTotal>0?model.topSegment.count/model.focusTotal:null,0)+' das vendas da marca.':'Sem vendas da marca neste recorte.'),'Ver concorrência',go('competition')],
+  ['pace','O mercado acelerou?',answer(model?.pace!=null?f.number(model.pace)+' emplacamentos por dia útil, '+f.signed(model.paceYearChange)+' sobre o ano anterior (ajustado aos dias úteis).':'Ritmo indisponível para este período.'),'Ver ritmo e sazonalidade',go('history','executive')],
+  ['electric','Quanto do mercado já é eletrificado?',answer(f.percent(model?.electrifiedShare,1)+' dos emplacamentos do recorte são HEV, PHEV, BEV ou MHEV.'),'Ver propulsão',go('technology')],
+  ['rank','Qual a posição da '+name+'?',answer(model?.rank?model.rank+'º lugar entre '+model.brands+' marcas'+(model.previousRank?' (período anterior: '+model.previousRank+'º).':'.'):'A marca não aparece neste recorte.'),'Ver ranking',go('ranking')]
+ ];
+ return jsxRuntime.jsxs('section',{className:'mp-questions','aria-labelledby':'mp-questions-title',children:[
+  jsxRuntime.jsxs('div',{className:'mp-questions-head',children:[jsxRuntime.jsx('h2',{id:'mp-questions-title',children:'Perguntas rápidas'}),typeof PrintButton==='function'&&jsxRuntime.jsx(PrintButton,{mode:'summary',label:'Resumo de uma página (PDF)',className:'am-small-button'})]}),
+  jsxRuntime.jsx('div',{className:'mp-question-grid',children:cards.map(([key,question,text,action,onClick])=>jsxRuntime.jsxs('article',{className:'mp-question',children:[jsxRuntime.jsx('h3',{children:question}),jsxRuntime.jsx('p',{'aria-live':'polite',children:text}),jsxRuntime.jsx('button',{type:'button',className:'am-small-button',onClick,children:action+' →'})]},key))})
+ ]});
+}
+if(typeof module!=='undefined'&&module.exports)module.exports={pulseFocusBrand,pulseFilters,pulseModel,pulseWorkingDays,pulseShiftYear,pulseFormat};
+// END MARKET PULSE
+// BEGIN EXPORT TOOLS
+// "Baixar imagem" for the authored SVG charts: the chart is redrawn on a canvas with
+// its computed colours (theme tokens resolved), the Geist font embedded, the HTML
+// legend next to it, a title and the source line, and saved as PNG.
+const EXPORT_STYLE_PROPS=['fill','fill-opacity','stroke','stroke-width','stroke-opacity','stroke-dasharray','stroke-linecap','stroke-linejoin','opacity','font-size','font-weight','font-family','text-anchor','dominant-baseline','paint-order','visibility','display','letter-spacing'];
+let exportFontPromise=null;
+function exportFontFace(){
+ if(!exportFontPromise)exportFontPromise=fetch(new URL('assets/fonts/Geist-Variable.woff2',document.baseURI)).then(r=>r.ok?r.blob():null).then(blob=>blob?new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve('@font-face{font-family:"Geist";src:url('+reader.result+') format("woff2");font-weight:100 900}');reader.onerror=()=>resolve('');reader.readAsDataURL(blob);}):'').catch(()=>'');
+ return exportFontPromise;
+}
+// Tokens use light-dark(); read them back as concrete colours through a probe element.
+function exportResolveColor(token,fallback){const probe=document.createElement('span');probe.style.color='var('+token+')';probe.style.display='none';(document.querySelector('.am-app')??document.body).appendChild(probe);const value=getComputedStyle(probe).color;probe.remove();return value||fallback;}
+function exportInlineStyles(source,clone){
+ const a=[source,...source.querySelectorAll('*')],b=[clone,...clone.querySelectorAll('*')];
+ for(let i=0;i<a.length&&i<b.length;i++){const cs=getComputedStyle(a[i]),style=EXPORT_STYLE_PROPS.map(p=>p+':'+cs.getPropertyValue(p)).join(';');b[i].setAttribute('style',style);b[i].removeAttribute('class');}
+}
+function exportLegend(root){
+ return [...(root?.querySelectorAll('.cc-legend span,.tbm-legend span,.ac-legend span,[data-export-legend] span')??[])].map(item=>({label:item.textContent.trim(),color:getComputedStyle(item.querySelector('i,b,em')??item).backgroundColor})).filter(item=>item.label);
+}
+async function exportSvgToPng(svg,{filename='grafico',title='',legend=[]}={}){
+ const box=svg.viewBox?.baseVal?.width?svg.viewBox.baseVal:svg.getBoundingClientRect(),w=Math.round(box.width),h=Math.round(box.height);
+ const clone=svg.cloneNode(true);exportInlineStyles(svg,clone);
+ clone.setAttribute('xmlns','http://www.w3.org/2000/svg');clone.setAttribute('width',w);clone.setAttribute('height',h);
+ const font=await exportFontFace();if(font){const style=document.createElementNS('http://www.w3.org/2000/svg','style');style.textContent=font;clone.insertBefore(style,clone.firstChild);}
+ const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml'}));
+ try{
+  const image=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error('Não foi possível desenhar o gráfico.'));img.src=url;});
+  const surface=exportResolveColor('--surface','#fff'),text=exportResolveColor('--text','#111'),muted=exportResolveColor('--secondary','#666');
+  const scale=2,pad=24,titleH=title?34:0,legendRows=[],ctx0=document.createElement('canvas').getContext('2d');ctx0.font='13px Geist, sans-serif';
+  let row=[],x=0;for(const item of legend){const iw=22+ctx0.measureText(item.label).width+18;if(x+iw>w&&row.length){legendRows.push(row);row=[];x=0;}row.push({...item,x});x+=iw;}if(row.length)legendRows.push(row);
+  const legendH=legendRows.length*22,footH=26,W=w+pad*2,H=pad+titleH+h+(legendH?legendH+10:0)+footH+pad;
+  const canvas=document.createElement('canvas');canvas.width=W*scale;canvas.height=H*scale;const ctx=canvas.getContext('2d');ctx.scale(scale,scale);
+  ctx.fillStyle=surface;ctx.fillRect(0,0,W,H);
+  if(title){ctx.fillStyle=text;ctx.font='600 17px Geist, sans-serif';ctx.fillText(title,pad,pad+18);}
+  ctx.drawImage(image,pad,pad+titleH,w,h);
+  let y=pad+titleH+h+10;ctx.font='13px Geist, sans-serif';
+  for(const r of legendRows){for(const item of r){ctx.fillStyle=item.color;ctx.fillRect(pad+item.x,y+3,12,12);ctx.fillStyle=text;ctx.fillText(item.label,pad+item.x+18,y+13);}y+=22;}
+  ctx.fillStyle=muted;ctx.font='11px Geist, sans-serif';ctx.fillText('Mercado Automotivo · emplacamentos de automóveis e comerciais leves · gerado em '+new Date().toLocaleDateString('pt-BR'),pad,H-pad+4);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=filename.replace(/[^\w.-]+/g,'-')+'.png';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),2000);
+ }finally{URL.revokeObjectURL(url);}
+}
+// Place inside the chart container; it exports the first SVG of the nearest [data-export-root].
+function ExportImageButton({name='grafico',title=''}){
+ const [busy,setBusy]=React.useState(false);
+ const run=async e=>{const root=e.currentTarget.closest('[data-export-root]'),svg=root?.querySelector('svg');if(!svg)return;setBusy(true);try{await exportSvgToPng(svg,{filename:name,title:title||root.getAttribute('data-export-title')||'',legend:exportLegend(root)});}catch(error){globalThis.alert?.(error.message);}finally{setBusy(false);}};
+ return jsxRuntime.jsx('button',{type:'button',className:'export-image-button',onClick:run,disabled:busy,title:'Baixar este gráfico como imagem PNG','aria-label':'Baixar gráfico como imagem PNG',children:busy?'Gerando…':'Baixar PNG'});
+}
+// Print: the whole area with print styles, or a one-page summary of Panorama.
+// A temporary header states the area, the filters (from the address bar) and the date.
+function printFilterSummary(){
+ const params=new URLSearchParams(globalThis.location?.search??''),parts=[];
+ for(const [key,value] of params){if(!key.startsWith('f.'))continue;const field=key.slice(2),label=typeof HISTORY_FILTER_LABELS!=='undefined'&&HISTORY_FILTER_LABELS[field]?HISTORY_FILTER_LABELS[field]:field==='date'?'Período':field==='population'?'Universo':field;parts.push(label+': '+value.replace('..',' a ').replace(/,/g,', '));}
+ const period=document.querySelector('.mp-strip[data-period]')?.getAttribute('data-period');if(period&&!params.has('f.date'))parts.unshift('Período: '+period);
+ return parts.length?parts.join(' · '):'Sem filtros';
+}
+function printView(mode='area'){
+ const root=document.documentElement,hidden=[],header=document.createElement('div');
+ const area=document.querySelector('.am-primary-nav [aria-current=page]')?.textContent?.trim()??'Mercado Automotivo';
+ header.className='print-header';header.innerHTML='';const strong=document.createElement('strong');strong.textContent='Mercado Automotivo · '+(mode==='summary'?'Resumo':area);const small=document.createElement('span');small.textContent=printFilterSummary()+' · gerado em '+new Date().toLocaleDateString('pt-BR');header.append(strong,small);document.body.prepend(header);
+ if(mode==='summary'){
+  const keep=[...document.querySelectorAll('.mp-strip,.oi-card,.mp-questions')],path=new Set();
+  keep.push(header);for(const el of keep){let n=el;while(n&&n!==document.documentElement){path.add(n);n=n.parentElement;}}
+  for(const el of path){if(keep.includes(el))continue;for(const child of el.children)if(!path.has(child)){child.setAttribute('data-print-hide','');hidden.push(child);}}
+  root.classList.add('print-summary');
+ }
+ let finished=false;const done=()=>{if(finished)return;finished=true;for(const el of hidden)el.removeAttribute('data-print-hide');root.classList.remove('print-summary');header.remove();globalThis.removeEventListener('afterprint',done);};
+ globalThis.addEventListener('afterprint',done);globalThis.print();setTimeout(done,1500);
+}
+function PrintButton({mode='area',label='Imprimir ou salvar PDF',className='am-nav-link'}){
+ return jsxRuntime.jsxs('button',{type:'button',className,onClick:()=>printView(mode),title:mode==='summary'?'Resumo de uma página: pulso, o que mudou e perguntas rápidas':'Imprime a área atual (ou salve como PDF na janela de impressão)',children:[jsxRuntime.jsx('span',{'aria-hidden':true,children:'⎙ '}),label]});
+}
+if(typeof module!=='undefined'&&module.exports)module.exports={EXPORT_STYLE_PROPS,exportLegend};
+// END EXPORT TOOLS
 function useMarketData(filters,enabled,mode,reportBusy=true){const shell=dataApp.useDataApp();const [manifest,setManifest]=React.useState(null),[manifestError,setManifestError]=React.useState(null),[state,setState]=React.useState({result:null,pending:true,progress:null,error:null,key:null});const worker=React.useRef(null),sequence=React.useRef(0),activeRequest=React.useRef(null);
  const includeInteractive=mode==='interactive'||mode==='interactive-daily',includeDaily=mode==='interactive-daily';
  const signature=canonicalFilterKey(filters),includeCatalog=['catalog','primary-map'].includes(mode),includeMarketBaseline=['technology','origin'].includes(mode),includeHistoryComparisons=mode==='history',includeChannelReference=['geography','primary-map'].includes(mode),includeOriginAnalysis=mode==='origin',includeMitsubishiProfile=['competition','ranking','segments'].includes(mode),base=getBase(shell.snapshot),requestKey=React.useMemo(()=>({includeInteractive,includeDaily,manifest,signature,base,includeMarketBaseline,includeHistoryComparisons,includeChannelReference,includeOriginAnalysis,includeMitsubishiProfile,includeCatalog}),[includeInteractive,includeDaily,manifest,signature,base,includeMarketBaseline,includeHistoryComparisons,includeChannelReference,includeOriginAnalysis,includeMitsubishiProfile,includeCatalog]);
@@ -5259,6 +5540,7 @@ function DashboardContent(){
   jsxRuntime.jsx(MarketHeader,navigationProps)
   , jsxRuntime.jsx(MarketSubnavigation,navigationProps)
   , tab!=='quality'&&jsxRuntime.jsx(MarketFilterBar, { definitions: activeDefinitions, queries: liveQueries, values: effectiveFilters, onChange: changeFilter, periodDateChoices: liveChoices.map(r=>r.date).filter(Boolean), singleSelection: tab==='geography', mapWarning: tab==='geography'?jsxRuntime.jsxs('div', { className: "am-map-context-banner", children: [jsxRuntime.jsx('p', { children: "O mapa usa uma opção por filtro em um recorte próprio. As seleções múltiplas das outras abas continuam guardadas. Alterar a UF limpa o município deste mapa; escolhas múltiplas pendentes ainda exigem confirmação."                                }), jsxRuntime.jsx('button', { className: "am-small-button", onClick: ()=>setMapContext(createMapContext(globalFilters)), children: "Usar filtros das outras abas"    })]}):null, children: jsxRuntime.jsx(PeriodShortcuts, { manifest: manifest, value: effectiveFilters.date, onChange: value=>{setFilter('date',value);if(tab==='dashboard'&&listMonths(rangeFrom(value,manifest)).length>2)setGrain('monthly');},})})
+  , tab!=='quality'&&jsxRuntime.jsx(MarketPulse,{filters:effectiveFilters})
   , tab==='geography'&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending,error:overviewMapQuery.error,ready:Boolean(overviewMapModel),compatibilityKey:JSON.stringify(['independent-primary-map',tab,effectiveFilters.uf]),label:performanceFilterLabel(overviewMapFilters),children:jsxRuntime.jsx(PrimaryMap,{...(tab==='dashboard'?{id:'overview-map'}:{id:'territories-primary-map'}),model:overviewMapModel,filters:effectiveFilters,scope:overviewMapScope,dataBase:getBase(snapshot),setFilter:setPrimaryMapFilter,view:tab==='geography'?mapView:overviewMapView,setView:tab==='geography'?setMapView:setOverviewMapView,pending:overviewMapQuery.pending,error:overviewMapQuery.error})})
    , tab==='geography'&&mapReady&&jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})
   , ['explore','structure'].includes(tab)?jsxRuntime.jsx(ExplorationView, { forcedView:tab==='structure'?'structure':null, onRankingRestore:setRankingControls, favoriteDefinitions: activeDefinitions, favoriteChoiceRows: liveChoices, manifest: manifest, manifestError: manifestError, filters: effectiveFilters, scope: scope, base: getBase(snapshot), highlightMitsubishi: highlightMitsubishi, onHighlightMitsubishi: setHighlightMitsubishi,}):tab==='models'?jsxRuntime.jsx(ScenarioWorkspace, { activeManifest: manifest, activeManifestVerified: Boolean(manifest)&&!manifestError, filters: effectiveFilters, scope: scope, base: getBase(snapshot), highlightMitsubishi: highlightMitsubishi, onHighlightMitsubishi: setHighlightMitsubishi,}):tab==='quality'?jsxRuntime.jsx(QualityView, { manifest: manifest,}):jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
@@ -5267,6 +5549,7 @@ function DashboardContent(){
     model.observationClipped&&jsxRuntime.jsxs('div', { className: "am-scope-alert", children: [jsxRuntime.jsx('span', { children: "i"}), jsxRuntime.jsxs('p', { children: ["Dados observados até "   , dateLabel(model.range.end), ". A análise e a comparação usam somente esse intervalo; os dias seguintes não são tratados como zero."                 ]})]}), model.channelUnavailableMonths?.length>0&&jsxRuntime.jsxs('div', { className: "am-scope-alert", role: "status", children: [jsxRuntime.jsx('span', { children: "!"}), jsxRuntime.jsxs('p', { children: [jsxRuntime.jsxs('strong', { children: ["Canal VD/Varejo indisponível em "    , model.channelUnavailableMonths.length, " mês(es)." ]}), " A fonte desses meses não informa o canal. Os pontos permanecem como lacunas; o total é indisponível quando nenhum mês tem informação, ou parcial quando há meses conhecidos. Ausência de canal não é zero emplacamento."                                   ]})]}), (model.missingMonths.length+(model.incompleteMonths?.length??0)>0)&&jsxRuntime.jsxs('div', { className: "am-scope-alert", children: [jsxRuntime.jsx('span', { children: "!"}), jsxRuntime.jsxs('p', { children: ["Cobertura parcial: "  , model.missingMonths.length, " mês(es) ausente(s) e "    , model.incompleteMonths?.length??0, " com cobertura incompleta ou não declarada. O total reúne os registros observados; os intervalos sem cobertura confirmada e suas comparações permanecem indisponíveis."                      ]})]}), jsxRuntime.jsxs('div', { className: "am-period-line", children: [jsxRuntime.jsx('span', { children: titlePeriod}), jsxRuntime.jsxs('span', { children: [model.coverage.length, " " , model.coverage.length===1?'arquivo mensal':'arquivos mensais', " · "  , effectiveFilters.population==='light'?'Automóveis + comerciais leves':'Todo o conteúdo dos arquivos']})]})
     , tab==='dashboard'&&jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
      jsxRuntime.jsx(OverviewInsights,{model,period:titlePeriod}),
+     jsxRuntime.jsx(QuickQuestions,{filters:effectiveFilters,onNavigate,onEvolutionView:setEvolutionView}),
      jsxRuntime.jsxs('div',{className:'am-overview-summary',children:[jsxRuntime.jsx(dataApp.SortableRegion, { id: "market:overview:kpis", variant: "canvas", columns: 12, spacing: "standard", rows: [{id:'market:overview:kpi-row',kind:'metrics',items:metricItems.map(m=>'overview-'+m[0])}], children: metricItems.map(([id,title,value,detail,accent])=>jsxRuntime.jsx(dataApp.SortableItem, { id: 'overview-'+id, label: title, kind: "metric", span: 3, children: jsxRuntime.jsx(MarketMetric, { id: 'overview-'+id, title: title, value: value, detail: detail, rows: id==='brand'?groups.marca:summaryRows, scope: scope, accent: accent,})}, id))}),jsxRuntime.jsxs('div',{className:'am-overview-mitsubishi',children:[jsxRuntime.jsx('strong',{children:'◆ Mitsubishi'}),jsxRuntime.jsx('span',{children:(groups.marca??[]).find(r=>r.name==='MITSUBISHI')?number(groups.marca.find(r=>r.name==='MITSUBISHI').count)+' emplacamentos · '+percent(groups.marca.find(r=>r.name==='MITSUBISHI').marketShare)+' do recorte · '+signed(groups.marca.find(r=>r.name==='MITSUBISHI').changeRate)+' no período':'Sem registros no recorte observado'})]})]})
      , jsxRuntime.jsx(dataApp.Section, { id: "overview-market-heading", title: "Ritmo e composição do mercado"    , spacing: "after-metrics", children: jsxRuntime.jsxs('div', { className:'am-overview-visuals', children: [
       jsxRuntime.jsx('div', { className:'am-overview-trend', children: jsxRuntime.jsx(MarketChart, { id: "overview-trend", title: "Evolução dos emplacamentos"  , rows: timelineRows, spec: {type:'area',x:'date',y:'count',stackable:false}, height: 320, scope: scope, controls: jsxRuntime.jsx(dataApp.SegmentedControl, { value: grain, onChange: setGrain, options: [{value:'daily',label:'Diária'},{value:'monthly',label:'Mensal'},{value:'annual',label:'Anual'}], compact: true,}),})})

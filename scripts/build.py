@@ -41,6 +41,9 @@ MODULES = [
     ('OVERVIEW INSIGHTS', ['overview-insights.js']),
     ('COMPETITIVE READING', ['competitive-reading.js']),
     ('SCENARIOS UI', ['scenarios.js']),
+    ('HISTORY DATA', ['history-data.js']),
+    ('MARKET PULSE', ['market-pulse.js']),
+    ('EXPORT TOOLS', ['export-tools.js']),
 ]
 # style id -> source stylesheet ('overview-clean-styles' has no source and is left as is).
 STYLES = {
@@ -56,6 +59,8 @@ STYLES = {
     'shared-layout-refinements-styles': 'shared-layout-refinements.css',
     'territory-brand-maps-styles': 'territory-brand-maps.css', 'overview-insights-styles': 'overview-insights.css',
     'scenario-context-styles': 'scenario-context.css', 'competitive-reading-styles': 'competitive-reading.css',
+    'market-pulse-styles': 'market-pulse.css',
+    'export-tools-styles': 'export-tools.css',
 }
 # New modules added after the reformulation register here too (see EXTRA_MODULES below).
 EXTRA_MODULES = []   # (marker, [files], style id or None, css file or None)
@@ -84,6 +89,17 @@ def swap_style(html, sid, css):
 
 def patch(html, old, new):
     if new in html:
+        return html
+    # A later mount may have edited around this one: it is applied when the text it
+    # inserts (the part between the common prefix and suffix) is already present.
+    p = 0
+    while p < min(len(old), len(new)) and old[p] == new[p]:
+        p += 1
+    q = 0
+    while q < min(len(old), len(new)) - p and old[-1 - q] == new[-1 - q]:
+        q += 1
+    inserted = new[p:len(new) - q]
+    if old not in html and len(inserted.strip()) > 20 and inserted in html:
         return html
     assert html.count(old) == 1, 'mount anchor not found: ' + old[:80]
     return html.replace(old, new, 1)

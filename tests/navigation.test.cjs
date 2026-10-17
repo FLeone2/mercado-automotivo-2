@@ -9,7 +9,7 @@ assert(legacy.every(id=>api.marketTabs.some(t=>t.id===id)));
 for(const tab of api.marketTabs){
  let navigated=[];const tree=api.MarketNavigation({tab:tab.id,onNavigate:id=>navigated.push(id)}),nodes=[...all(tree),...all(api.MarketSubnavigation({tab:tab.id,onNavigate:id=>navigated.push(id)}))];
  const primary=nodes.find(n=>n.props?.className==='am-primary-nav');assert.equal(primary.props.children.length,8);
- const docs=nodes.find(n=>n.props?.className==='am-secondary-nav');assert.equal(docs.props.children.props.children,'Dados e metodologia');
+ const docs=nodes.find(n=>n.props?.className==='am-secondary-nav'),docChildren=[docs.props.children].flat();assert(docChildren.some(c=>c?.props?.children==='Dados e metodologia'));
  for(const button of all(tree).filter(n=>n.type==='button')){button.props.onClick();assert(api.marketTabs.some(t=>t.id===navigated.at(-1)));}
  const location=api.navigationLocation(tab.id);assert.equal(location.leaf,tab.id);
  assert(nodes.some(n=>n.props?.['aria-current']==='page'));

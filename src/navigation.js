@@ -21,12 +21,20 @@ function MarketNavigation({tab,explorationView,onNavigate}){
 }
 // Every area uses the same second row, outside the shell's primary header.
 // Leaf routes keep their URL contracts; analytical views keep their own state.
+// The address bar already carries the area and the filters: copy it to share this exact view.
+function CopyViewLink(){
+ const [status,setStatus]=React.useState(''),timer=React.useRef(null);
+ React.useEffect(()=>()=>clearTimeout(timer.current),[]);
+ const copy=async()=>{const url=globalThis.location?.href??'';let ok=false;try{await navigator.clipboard.writeText(url);ok=true;}catch{const area=document.createElement('textarea');area.value=url;area.setAttribute('readonly','');area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();try{ok=document.execCommand('copy');}catch{}area.remove();}
+  setStatus(ok?'Link copiado':'Copie o endereço do navegador');clearTimeout(timer.current);timer.current=setTimeout(()=>setStatus(''),2500);};
+ return jsxRuntime.jsxs('button',{type:'button',className:'am-nav-link am-copy-link',onClick:copy,title:'Copia um link com esta área e estes filtros',children:[jsxRuntime.jsx('span',{'aria-hidden':true,children:'🔗 '}),jsxRuntime.jsx('span',{'aria-live':'polite',children:status||'Copiar link'})]});
+}
 function MarketSubnavigation({tab,explorationView,onNavigate,evolutionView='executive',onEvolutionView,scenarioView='diagnostic',onScenarioView}){
  const location=navigationLocation(tab,explorationView);
  const options=tab==='history'?EVOLUTION_TABS:tab==='models'?SCENARIO_TABS:(location.group?.routes??[tab]).map(id=>({value:id,label:marketTabs.find(item=>item.id===id)?.label??location.label}));
  const value=tab==='history'?evolutionView:tab==='models'?scenarioView:location.leaf;
  const choose=tab==='history'?onEvolutionView:tab==='models'?onScenarioView:onNavigate;
- return jsxRuntime.jsxs('div',{className:'am-subnavigation',children:[jsxRuntime.jsx('nav',{'aria-label':'Análises de '+(location.group?.label??location.label),className:'am-leaf-nav',children:options.map(item=>jsxRuntime.jsx('button',{type:'button',className:'am-nav-link','aria-current':value===item.value?'page':undefined,onClick:()=>choose?.(item.value),children:item.label},item.value))}),jsxRuntime.jsx('nav',{'aria-label':'Documentação',className:'am-secondary-nav',children:jsxRuntime.jsx('button',{type:'button',className:'am-nav-link','aria-current':tab==='quality'?'page':undefined,onClick:()=>onNavigate('quality'),children:'Dados e metodologia'})})]});
+ return jsxRuntime.jsxs('div',{className:'am-subnavigation',children:[jsxRuntime.jsx('nav',{'aria-label':'Análises de '+(location.group?.label??location.label),className:'am-leaf-nav',children:options.map(item=>jsxRuntime.jsx('button',{type:'button',className:'am-nav-link','aria-current':value===item.value?'page':undefined,onClick:()=>choose?.(item.value),children:item.label},item.value))}),jsxRuntime.jsxs('nav',{'aria-label':'Compartilhar e documentação',className:'am-secondary-nav',children:[jsxRuntime.jsx(CopyViewLink,{}),typeof PrintButton==='function'&&jsxRuntime.jsx(PrintButton,{label:'Imprimir / PDF'}),jsxRuntime.jsx('button',{type:'button',className:'am-nav-link','aria-current':tab==='quality'?'page':undefined,onClick:()=>onNavigate('quality'),children:'Dados e metodologia'})]})]});
 }
 
 function MarketIdentity(){

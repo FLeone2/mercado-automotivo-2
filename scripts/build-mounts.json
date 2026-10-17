@@ -1,0 +1,30 @@
+[
+ [
+  "setGrain('monthly');},})})\n  , tab==='geography'&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending",
+  "setGrain('monthly');},})})\n  , tab!=='quality'&&jsxRuntime.jsx(MarketPulse,{filters:effectiveFilters})\n  , tab==='geography'&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending"
+ ],
+ [
+  "jsxRuntime.jsx(OverviewInsights,{model,period:titlePeriod}),\n",
+  "jsxRuntime.jsx(OverviewInsights,{model,period:titlePeriod}),\n     jsxRuntime.jsx(QuickQuestions,{filters:effectiveFilters,onNavigate,onEvolutionView:setEvolutionView}),\n"
+ ],
+ [
+  "const favoriteSupportedTab = tab => ['dashboard','explore','ranking'].includes(tab);",
+  "const favoriteSupportedTab = tab => marketTabs.some(item=>item.id===tab&&item.id!=='quality');"
+ ],
+ [
+  "tabIds:['dashboard','explore','ranking']})",
+  "tabIds:marketTabs.map(item=>item.id)})"
+ ],
+ [
+  "Salva os filtros e controles de Panorama, Ranking, Pirâmide BD ou Explorar neste navegador.",
+  "Salva a aba e os filtros de qualquer área (e os controles de Ranking e Explorar) neste navegador."
+ ],
+ [
+  "Para salvar uma análise, abra Visão geral, Ranking ou Explorar. Você pode reabrir os favoritos abaixo.",
+  "Para salvar, abra a área desejada; Dados e metodologia não tem filtros para salvar. Você pode reabrir os favoritos abaixo."
+ ],
+ [
+  "entry.criteria.tabId==='explore'?'Explorar':entry.criteria.tabId==='ranking'?'Ranking':'Visão geral'",
+  "marketTabs.find(item=>item.id===entry.criteria.tabId)?.label??'Panorama'"
+ ]
+]
