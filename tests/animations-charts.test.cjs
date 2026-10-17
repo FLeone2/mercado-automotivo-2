@@ -1,5 +1,6 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),zlib=require('node:zlib');
+Object.assign(globalThis,require('../src/chart-scales.js'));
 const C=require('../src/animations-charts.js');
 const row=(name,count,priorCount,extra={})=>({name,count,priorCount,mitCount:0,brands:{[name]:count},...extra});
 const frame=(month,rows,extra={})=>({month,total:rows.reduce((s,r)=>s+(r.count??0),0),complete:true,coverageStatus:'complete',groups:{marca:rows,modelo:rows,uf:rows},...extra});
@@ -89,3 +90,9 @@ assert.doesNotThrow(()=>C.AnimationBubbles({frames:[real],frame:real,dimension:'
 console.log('PASS animations charts: stable keyed motion, real weighted-source frames, true-rank ties / MIT membership, fixed bubble scales / null bases / area / broken trails, complete independent mixes, metric-correct leadership, exact full tables, and reduced motion.');
 
 assert(css.includes('color:var(--text);background:var(--surface);border-radius:4px;padding:2px 4px;text-shadow:none'),'Stack labels use theme-tested surface/text pairing, not low-contrast white over arbitrary category colors');
+{const f=(m,rows)=>frame(m,rows),big=[row('X',50,40),row('Y',40,30),row('Z',30,25),row('W',20,15),row('GEELY',6000,6)];
+ const sc=C.animationBubbleScales([f('2026-01',big)],'marca');
+ assert.ok(sc.y[1]<50,'robust scale ignores the +99.900% outlier');
+ const pt=C.animationBubblePoint(C.animationBubbleRows(f('2026-01',big),'marca').find(r=>r.name==='GEELY'),sc);
+ assert.equal(pt.clamp,1);assert.ok(pt.y>=90,'pinned outlier stays inside the plot');
+ console.log('PASS animations bubbles: robust Y scale pins outliers');}
