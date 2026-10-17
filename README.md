@@ -44,11 +44,11 @@ O script também aplica três ajustes no runtime: tema salvo inexistente volta a
 
 | Área | O que mudou | Fonte | Build |
 |---|---|---|---|
-| Panorama | "O que mudou" em frases; KPIs no topo; sem o mapa repetido | `src/overview-insights.*` | `scripts/build-overview-insights.py` |
-| Concorrência | "Mitsubishi no seu segmento": ranking no segmento, matriz por UF, concentração (HHI) | `src/competitive-reading.*` | `scripts/build-competitive-reading.py` |
-| Territórios | Mapa principal com zoom animado e hover leve; "Marcas no território": top 3 por estado, força da marca, espigões (mercado, Mitsubishi, rede × oportunidade) e Brasil em 3D com rotação | `src/primary-map.*`, `src/territory-brand-maps.*`, `data/geography/municipal-points.json` | `scripts/build-primary-map.py`, `scripts/build-territory-maps.py`, `scripts/build-municipal-points.py` |
-| Economia (ex-Cenários) | "Contexto econômico" primeiro; análises técnicas mantidas nas subabas | `src/scenarios.js`, `src/scenario-context.css`, `src/navigation.js` | `scripts/build-scenario-context.py` |
-| Todas | "Mais análises" visíveis por área; Explorar com todos os formatos e mapas | `src/catalog-workspace.js` | `scripts/build-catalog-areas.py` |
+| Panorama | "O que mudou" em frases; KPIs no topo; sem o mapa repetido | `src/overview-insights.*` | `scripts/build.py` |
+| Concorrência | "Mitsubishi no seu segmento": ranking no segmento, matriz por UF, concentração (HHI) | `src/competitive-reading.*` | `scripts/build.py` |
+| Territórios | Mapa principal com zoom animado e hover leve; "Marcas no território": top 3 por estado, força da marca, espigões (mercado, Mitsubishi, rede × oportunidade) e Brasil em 3D com rotação | `src/primary-map.*`, `src/territory-brand-maps.*`, `data/geography/municipal-points.json` | `scripts/build.py` (pontos: `scripts/build-municipal-points.py`) |
+| Economia (ex-Cenários) | "Contexto econômico" primeiro; análises técnicas mantidas nas subabas | `src/scenarios.js`, `src/scenario-context.css`, `src/navigation.js` | `scripts/build.py` |
+| Todas | "Mais análises" visíveis por área; Explorar com todos os formatos e mapas | `src/catalog-workspace.js` | `scripts/build.py` |
 
 ### Build único
 
