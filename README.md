@@ -91,6 +91,7 @@ Os dados da Economia (Banco Central, IBGE) são atualizados à parte com `python
 | Todas | Copiar link, Imprimir / PDF, Favoritos em qualquer área, Baixar PNG dos gráficos | `src/navigation.js`, `src/export-tools.*`, `scripts/build-mounts.json` |
 | Evolução | Ritmo por dia útil, sazonalidade e meses fora do padrão | `src/history-analyses.js` |
 | Concorrência | De onde veio a variação; modelo contra modelo | `src/history-analyses.js` |
+| Concorrência | Sankey origem → canal → combustível → tipo de veículo (caminhos inteiros, modo `flow` do worker) | `src/flow-sankey.*` |
 | Propulsão | Eletrificação desde 2016 | `src/history-analyses.js` |
 | Territórios | Emplacamentos por mil habitantes | `src/history-analyses.js`, `data/reference/population.json` |
 | Economia | Selos dado oficial / análise / projeção | `src/scenarios.js` |

@@ -36,6 +36,27 @@
   const INTERACTIVE_DIMS = ['bd_carroceria','bd_segmento','combustivel','marca'];
   const DIMS = ['uf','municipio','marca','modelo','grupo_modelo','combustivel','segmento','subsegmento','tipo_venda','regiao','nacionalidade','ano_fabricacao','potencia','capacidade_carga','capacidade_passageiros','bd_segmento','bd_carroceria','bd_classe','bd_macro','bd_combustivel','bd_origem','propulsao'];
   const LABELS = {uf:'UF',municipio:'Município',marca:'Marca',modelo:'Modelo',grupo_modelo:'Grupo de modelos',combustivel:'Combustível',segmento:'Segmento',subsegmento:'Subsegmento',tipo_venda:'Canal de venda',regiao:'Região',nacionalidade:'Código de nacionalidade da fonte',ano_fabricacao:'Ano de fabricação',potencia:'Potência',capacidade_carga:'Capacidade de carga',capacidade_passageiros:'Capacidade de passageiros',bd_segmento:'Porte (SEGMENT)',bd_carroceria:'Carroceria (BODY TYPE)',bd_classe:'Classe BD',bd_macro:'Macrosegmento BD',bd_combustivel:'Tecnologia BD',bd_origem:'Origem do veículo · BD',propulsao:'Propulsão'};
+  // Labels of the origin → channel → fuel → vehicle-type flow (Concorrência). Several source codes may share one label.
+  const FLOW_SOURCE={fluxo_origem:'bd_origem',fluxo_canal:'tipo_venda',fluxo_combustivel:'bd_combustivel',fluxo_segmento:'bd_classe'};
+  const FLOW_FUEL={FFV:'Flex',GASOLINE:'Gasolina',ETANOL:'Etanol',DIESEL:'Diesel',MHEV:'Híbrido leve',HEV:'Híbrido',PHEV:'Híbrido plug-in',BEV:'Elétrico'};
+  const FLOW_PICKUP={'PICK-UP SMALL':'Picape pequena','PICK-UP COMPACT':'Picape compacta','PICK-UP MID':'Picape média','PICK-UP LARGE':'Picape grande'};
+  const FLOW_BODY={SUV:'SUV',HATCH:'Hatch',SEDAN:'Sedan',MPV:'Minivan',WAGON:'Perua'};
+  function flowSegment(value){
+   const text=String(value??'').trim().toUpperCase(),[body,size='']=text.split(' / ');
+   if(!size)return 'Não classificado';
+   if(FLOW_PICKUP[size])return FLOW_PICKUP[size];
+   if(FLOW_BODY[body])return FLOW_BODY[body];
+   if(/VAN$/.test(size)||body==='CARGO'||body==='AMBULANCE')return 'Furgão e van';
+   if(/TRUCK/.test(body)||/TRUCK/.test(size))return 'Caminhão leve';
+   return 'Outros';
+  }
+  function flowLabel(dim,value){
+   const v=String(value??'').trim();
+   if(dim==='fluxo_origem')return v==='LOCAL'?'Nacional':v==='IMP'?'Importado':'Não classificado';
+   if(dim==='fluxo_canal')return v==='VAREJO'?'Varejo':v==='VD'?'Venda direta':'Canal não informado';
+   if(dim==='fluxo_combustivel')return FLOW_FUEL[v.toUpperCase()]??'Não classificado';
+   return flowSegment(v);
+  }
   function propulsionClass(value){const v=String(value??'').trim().toUpperCase();if(['GASOLINE','FFV','DIESEL','ETANOL','TETRAFUEL','GNV'].includes(v))return 'ICE';if(['HEV','PHEV','BEV','MHEV','FCEL'].includes(v))return v;return 'Não classificado';}
   const number = v => v == null ? '—' : new Intl.NumberFormat('pt-BR').format(v);
   const compact = v => v == null ? '—' : new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1}).format(v);
@@ -66,7 +87,7 @@
    if(range.start.endsWith('-01')&&range.start.slice(0,7)===range.end.slice(0,7)){const endDay=e.getUTCDate();s.setUTCMonth(s.getUTCMonth()-1);const last=new Date(Date.UTC(s.getUTCFullYear(),s.getUTCMonth()+1,0)).getUTCDate();const pe=new Date(Date.UTC(s.getUTCFullYear(),s.getUTCMonth(),Math.min(endDay,last),12));return {start:iso(s),end:iso(pe)};}
    const n=Math.round((e-s)/86400000)+1; s.setUTCDate(s.getUTCDate()-n);e.setUTCDate(e.getUTCDate()-n);return {start:iso(s),end:iso(e)};
   }
-  function createAccumulator(){return {total:0,groups:Object.fromEntries(DIMS.map(d=>[d,new Map()])),daily:new Map(),monthly:new Map(),brandsByMonth:new Map(),fuelByMonth:new Map(),modelsByMonth:new Map(),technologyByMonth:new Map(),propulsionByMonth:new Map(),bodyByMonth:new Map(),channelByMonth:Object.fromEntries(['marca','modelo','bd_carroceria'].map(d=>[d,new Map()])),channelCoverage:new Map(),stateChannelsByMonth:new Map(),originByMonth:new Map(),municipalBrands:new Map(),sourceRows:0};}
+  function createAccumulator(){return {total:0,groups:Object.fromEntries(DIMS.map(d=>[d,new Map()])),daily:new Map(),monthly:new Map(),brandsByMonth:new Map(),fuelByMonth:new Map(),modelsByMonth:new Map(),technologyByMonth:new Map(),propulsionByMonth:new Map(),bodyByMonth:new Map(),channelByMonth:Object.fromEntries(['marca','modelo','bd_carroceria'].map(d=>[d,new Map()])),channelCoverage:new Map(),stateChannelsByMonth:new Map(),originByMonth:new Map(),municipalBrands:new Map(),flowPaths:new Map(),sourceRows:0};}
   // Preserve exact source-brand membership after every analytical filter has passed.
   // A model/group label can belong to multiple manufacturers; never infer aliases.
   const RANKING_BRAND_DIMENSIONS = ['marca','modelo','grupo_modelo'];
@@ -88,7 +109,7 @@
    const historyDimensions=options.includeHistoryComparisons?['marca','modelo','bd_carroceria']:[];
    const trackChannels=options.includeHistoryComparisons||options.includeChannelCoverage||options.includeStateChannels;
    const add=(map,key,count)=>map.set(key,(map.get(key)??0)+count);
-   const descriptor=d=>{if(descriptors.has(d))return descriptors.get(d);const source=d==='propulsao'?'bd_combustivel':d,values=dictionaries[source]??[],labels=values.map(v=>d==='propulsao'?propulsionClass(v):categoryLabel(v));const fallback=labels.length;labels.push(d==='propulsao'?'Não classificado':'Não informado');const result={dim:d,col:idx[source],labels,fallback};descriptors.set(d,result);return result;};
+   const descriptor=d=>{if(descriptors.has(d))return descriptors.get(d);const flow=FLOW_SOURCE[d]!==undefined,source=flow?FLOW_SOURCE[d]:d==='propulsao'?'bd_combustivel':d,values=dictionaries[source]??[],labels=values.map(v=>flow?flowLabel(d,v):d==='propulsao'?propulsionClass(v):categoryLabel(v));const fallback=labels.length;labels.push(flow?flowLabel(d,null):d==='propulsao'?'Não classificado':'Não informado');const result={dim:d,col:idx[source],labels,fallback};descriptors.set(d,result);return result;};
    const codeFor=(d,row)=>{const code=row[d.col];return d.labels[code]===undefined?d.fallback:code;};
    const checks=DIMS.filter(d=>hasFilterSelection(filters[d],d)).map(d=>{const desc=descriptor(d),allowed=new Set(categoricalSelection(filters[d]));return {...desc,allowed:desc.labels.map(v=>allowed.has(v))};});
    if(filters.population==='light'){const desc=descriptor('segmento');checks.push({...desc,allowed:desc.labels.map(v=>v==='Auto'||v==='Comercial Leve')});}
@@ -102,9 +123,11 @@
    if(options.includeOriginAnalysis)jointSpecs.push({left:descriptor('marca'),right:descriptor('bd_origem'),target:acc.originByMonth});
    // Municipality × brand over the whole period (no month in the key): the leader map reads one UF at a time.
    if(options.includeMunicipalLeaders)jointSpecs.push({left:descriptor('municipio'),right:descriptor('marca'),target:acc.municipalBrands,noMonth:true});
+   // Four-way path origin × channel × fuel × vehicle type, kept whole so ribbons can be traced end to end.
+   const flowDims=options.includeFlow?['fluxo_origem','fluxo_canal','fluxo_combustivel','fluxo_segmento'].map(descriptor):null,flowRadix=flowDims?flowDims.map(d=>d.labels.length):null;
    const newJointCounter=spec=>{const length=spec.left.labels.length*spec.right.labels.length;return {...spec,stride:spec.right.labels.length,counts:new Float64Array(length),seen:new Uint8Array(length),touched:[]};};
    const months=new Map(),dates=new Map();
-   const datePlan=date=>{if(dates.has(date))return dates.get(date);if(!date||date<range.start||date>range.end){dates.set(date,null);return null;}const month=date.slice(0,7);if(!months.has(month))months.set(month,{month,total:0,seen:false,counters:grouped.map(newCounter),joints:jointSpecs.map(newJointCounter),channelTotals:{observedCount:0,knownCount:0,unknownCount:0},municipalities:new Map()});const plan={date,count:0,seen:false,month:months.get(month),dayCounters:trackDaily?grouped.filter(desc=>INTERACTIVE_DIMS.includes(desc.dim)).map(newCounter):null};dates.set(date,plan);return plan;};
+   const datePlan=date=>{if(dates.has(date))return dates.get(date);if(!date||date<range.start||date>range.end){dates.set(date,null);return null;}const month=date.slice(0,7);if(!months.has(month))months.set(month,{month,total:0,seen:false,counters:grouped.map(newCounter),joints:jointSpecs.map(newJointCounter),flow:flowDims?new Map():null,channelTotals:{observedCount:0,knownCount:0,unknownCount:0},municipalities:new Map()});const plan={date,count:0,seen:false,month:months.get(month),dayCounters:trackDaily?grouped.filter(desc=>INTERACTIVE_DIMS.includes(desc.dim)).map(newCounter):null};dates.set(date,plan);return plan;};
    const datePlans=(dictionaries.date??[]).map(date=>date==null?undefined:datePlan(date));
    for(const row of cube.rows??[]){
     const dateCode=row[idx.date],plan=datePlans[dateCode]===undefined?datePlan(dictionaries.date?.[dateCode]??dateCode):datePlans[dateCode];if(!plan)continue;
@@ -114,6 +137,7 @@
     if(onAcceptedRow)onAcceptedRow(row,count,plan.date,d=>{const desc=descriptor(d);return desc.labels[codeFor(desc,row)];});
     if(trackChannels){const label=channelDescriptor.labels[codeFor(channelDescriptor,row)],totals=plan.month.channelTotals;totals.observedCount+=count;if(label==='VD'||label==='VAREJO')totals.knownCount+=count;else totals.unknownCount+=count;}
     for(const joint of plan.month.joints)increment(joint,codeFor(joint.left,row)*joint.stride+codeFor(joint.right,row),count);
+    if(plan.month.flow){let k=0;for(let i=0;i<flowDims.length;i++)k=k*flowRadix[i]+codeFor(flowDims[i],row);plan.month.flow.set(k,(plan.month.flow.get(k)??0)+count);}
     acc.total+=count;acc.sourceRows++;plan.count+=count;plan.seen=true;const month=plan.month;month.total+=count;month.seen=true;
     for(const counter of month.counters)increment(counter,codeFor(counter,row),count);
     if(plan.dayCounters)for(const counter of plan.dayCounters)increment(counter,codeFor(counter,row),count);
@@ -123,6 +147,7 @@
    for(const plan of dates.values())if(plan?.seen){acc.daily.set(plan.date,(acc.daily.get(plan.date)??0)+plan.count);if(plan.dayCounters)for(const counter of plan.dayCounters){const map=acc.interactiveDailyGroups[counter.dim];for(const code of counter.touched){const key=JSON.stringify([plan.date,counter.labels[code]]);map.set(key,(map.get(key)??0)+counter.counts[code]);}}}
    for(const month of months.values()){if(!month.seen)continue;acc.monthly.set(month.month,(acc.monthly.get(month.month)??0)+month.total);
     for(const counter of month.counters){const group=acc.groups[counter.dim],timeline=targets[counter.dim];for(const code of counter.touched){const label=counter.labels[code],count=counter.counts[code];group.set(label,(group.get(label)??0)+count);if(timeline){const key=month.month+'|'+label;timeline.set(key,(timeline.get(key)??0)+count);}if(options.includeInteractive&&acc.interactiveMonthlyGroups[counter.dim]){const map=acc.interactiveMonthlyGroups[counter.dim],key=JSON.stringify([month.month,label]);map.set(key,(map.get(key)??0)+count);}}}
+    if(month.flow)for(const [packed,n] of month.flow){let k=packed;const parts=new Array(flowDims.length);for(let i=flowDims.length-1;i>=0;i--){parts[i]=flowDims[i].labels[k%flowRadix[i]];k=Math.floor(k/flowRadix[i]);}add(acc.flowPaths,JSON.stringify(parts),n);}
     for(const joint of month.joints)for(const code of joint.touched){const left=joint.left.labels[Math.floor(code/joint.stride)],right=joint.right.labels[code%joint.stride];add(joint.target,joint.noMonth?JSON.stringify([left,right]):JSON.stringify([month.month,left,right]),joint.counts[code]);}
     for(const [uf,counter]of month.municipalities)for(const code of counter.touched){const key=counter.labels[code]+' · '+ufLabels[uf];acc.groups.municipio.set(key,(acc.groups.municipio.get(key)??0)+counter.counts[code]);}
    }
@@ -137,7 +162,8 @@
    const jointTimeline=map=>[...map].map(([key,count])=>{const [month,name,channel]=JSON.parse(key);return {date:month+'-01',month,name,channel,count};});
    const timeline=(map)=>[...map].map(([key,count])=>({date:key.slice(0,7)+'-01',name:key.slice(8),count,marketShare:acc.monthly.get(key.slice(0,7))?count/acc.monthly.get(key.slice(0,7)):null}));
    const municipalBrands=acc.municipalBrands.size?[...acc.municipalBrands].map(([key,count])=>{const [municipio,marca]=JSON.parse(key);return {municipio,marca,count};}):undefined;
-   return {total:acc.total,municipalBrands,previous:comparisonAvailable?prior.total:null,year:yearAvailable?year.total:null,changeRate:comparisonAvailable&&prior.total?(acc.total-prior.total)/prior.total:null,yearChangeRate:yearAvailable&&year.total?(acc.total-year.total)/year.total:null,groups,daily,monthly,brandsByMonth:timeline(acc.brandsByMonth),fuelByMonth:timeline(acc.fuelByMonth),modelsByMonth:timeline(acc.modelsByMonth),technologyByMonth:timeline(acc.technologyByMonth),propulsionByMonth:timeline(acc.propulsionByMonth),bodyByMonth:timeline(acc.bodyByMonth),channelByMonth:Object.fromEntries(Object.entries(acc.channelByMonth).map(([dim,map])=>[dim,jointTimeline(map)])),channelCoverage:[...acc.channelCoverage.values()].sort((a,b)=>a.month.localeCompare(b.month)),stateChannelsByMonth:jointTimeline(acc.stateChannelsByMonth),originByMonth:[...acc.originByMonth].map(([key,count])=>{const [month,name,origin]=JSON.parse(key);return {date:month+'-01',month,brand:name,vehicleOrigin:origin,name,origin,count,marketShare:acc.monthly.get(month)?count/acc.monthly.get(month):null};}),range,coverage,comparisonAvailable,yearAvailable,sourceRows:acc.sourceRows};
+   const flowPaths=acc.flowPaths.size?[...acc.flowPaths].map(([key,count])=>{const [origem,canal,combustivel,segmento]=JSON.parse(key);return {origem,canal,combustivel,segmento,count};}):undefined;
+   return {total:acc.total,municipalBrands,flowPaths,previous:comparisonAvailable?prior.total:null,year:yearAvailable?year.total:null,changeRate:comparisonAvailable&&prior.total?(acc.total-prior.total)/prior.total:null,yearChangeRate:yearAvailable&&year.total?(acc.total-year.total)/year.total:null,groups,daily,monthly,brandsByMonth:timeline(acc.brandsByMonth),fuelByMonth:timeline(acc.fuelByMonth),modelsByMonth:timeline(acc.modelsByMonth),technologyByMonth:timeline(acc.technologyByMonth),propulsionByMonth:timeline(acc.propulsionByMonth),bodyByMonth:timeline(acc.bodyByMonth),channelByMonth:Object.fromEntries(Object.entries(acc.channelByMonth).map(([dim,map])=>[dim,jointTimeline(map)])),channelCoverage:[...acc.channelCoverage.values()].sort((a,b)=>a.month.localeCompare(b.month)),stateChannelsByMonth:jointTimeline(acc.stateChannelsByMonth),originByMonth:[...acc.originByMonth].map(([key,count])=>{const [month,name,origin]=JSON.parse(key);return {date:month+'-01',month,brand:name,vehicleOrigin:origin,name,origin,count,marketShare:acc.monthly.get(month)?count/acc.monthly.get(month):null};}),range,coverage,comparisonAvailable,yearAvailable,sourceRows:acc.sourceRows};
   }
   // Interactive charts keep the exact selected universe. Counts are weighted source
   // registrations, not row counts; uncovered periods have no valid denominator.
@@ -362,12 +388,12 @@
     const token=++generation;controller?.abort();controller=null;
     if(data.type==='clear-cache'){loader.clear();resultCache.clear();aggregateCache.clear();sourceSummaries.clear();namespace=null;try{await aggregateStore?.clear();}catch{}return;}
     if(data.type==='cancel'){if(data.releaseCubes)loader.clear();return;}
-    const {id,manifest,filters={},base,includeMarketBaseline=false,includeHistoryComparisons=false,includeChannelReference=false,includeOriginAnalysis=false,includeMitsubishiProfile=false,includeInteractive=false,includeDaily=false,includeMunicipalLeaders=false,includeCatalog=false}=data;
+    const {id,manifest,filters={},base,includeMarketBaseline=false,includeHistoryComparisons=false,includeChannelReference=false,includeOriginAnalysis=false,includeMitsubishiProfile=false,includeInteractive=false,includeDaily=false,includeMunicipalLeaders=false,includeFlow=false,includeCatalog=false}=data;
     const activeController=new AbortController();controller=activeController;
     try{
      const identity=await manifestCacheIdentity(manifest,base);if(generation!==token)return;
      if(identity!==namespace){loader.setNamespace(identity);resultCache.clear();aggregateCache.clear();sourceSummaries.clear();namespace=identity;}
-     const options={includeMarketBaseline:Boolean(includeMarketBaseline),includeHistoryComparisons:Boolean(includeHistoryComparisons),includeChannelReference:Boolean(includeChannelReference),includeOriginAnalysis:Boolean(includeOriginAnalysis),includeMitsubishiProfile:Boolean(includeMitsubishiProfile),includeInteractive:Boolean(includeInteractive),includeDaily:Boolean(includeInteractive&&includeDaily),includeMunicipalLeaders:Boolean(includeMunicipalLeaders),includeCatalog:Boolean(includeCatalog)};
+     const options={includeMarketBaseline:Boolean(includeMarketBaseline),includeHistoryComparisons:Boolean(includeHistoryComparisons),includeChannelReference:Boolean(includeChannelReference),includeOriginAnalysis:Boolean(includeOriginAnalysis),includeMitsubishiProfile:Boolean(includeMitsubishiProfile),includeInteractive:Boolean(includeInteractive),includeDaily:Boolean(includeInteractive&&includeDaily),includeMunicipalLeaders:Boolean(includeMunicipalLeaders),includeFlow:Boolean(includeFlow),includeCatalog:Boolean(includeCatalog)};
      const queryKey=canonicalFilterKey(filters)+'|'+JSON.stringify(options),cached=resultCache.get(queryKey);
      if(cached){port.postMessage({id,result:cached});return;}
      const requestedRange=rangeFrom(filters.date,manifest);let range=requestedRange;
@@ -382,7 +408,7 @@
      const segments=categoricalSelection(filters.segmento);
      const scopeOf=month=>[...new Set((index.get(month)?.scope??[]).map(s=>s.segment??s.segmento).filter(Boolean).filter(s=>filters.population!=='light'||['Auto','Comercial Leve'].includes(s)).filter(s=>!segments.length||segments.includes(s)))].sort();
      const bdFilters=DIMS.filter(field=>bdField(field)&&hasFilterSelection(filters[field],field));
-     const needsOrigin=includeOriginAnalysis||hasFilterSelection(filters.bd_origem,'bd_origem');
+     const needsOrigin=includeOriginAnalysis||includeFlow||hasFilterSelection(filters.bd_origem,'bd_origem');
      const channelSelection=categoricalSelection(filters.tipo_venda);
      const filteredKnownChannel=channelSelection.length>0&&channelSelection.every(channel=>channel==='VD'||channel==='VAREJO');
      const channelUnavailableMonths=filteredKnownChannel?accepted.filter(month=>Array.isArray(index.get(month)?.channelSourceFields)&&index.get(month).channelSourceFields.length===0):[];
@@ -422,7 +448,7 @@
       const cube=summary;
       const columns=cube.columns??cube.dimensions??[];
       if(bdFilters.some(field=>!columns.includes(sourceField(field))))throw Error('A classificação BD ainda está em processamento para '+needed[i]+'. Escolha um período já classificado ou remova o filtro BD.');
-      if(includeOriginAnalysis&&!columns.includes('bd_origem'))throw Error('O agregado de origem do veículo é incompatível para '+needed[i]+'.');
+      if((includeOriginAnalysis||includeFlow)&&!columns.includes('bd_origem'))throw Error('O agregado de origem do veículo é incompatível para '+needed[i]+'.');
       const collectMonthly=async(target,cube,selected,selectedRange,collectOptions={})=>{
        const clipped={start:selectedRange.start>cube.month+'-01'?selectedRange.start:cube.month+'-01',end:selectedRange.end<monthEnd(cube.month)?selectedRange.end:monthEnd(cube.month)};
        const {membership,catalogExtra,...projection}=collectOptions;
@@ -447,7 +473,7 @@
        if(catalogExtra)mergeCatalogExtras(catalogExtra,contribution.extra);
       };
       if(overlaps(cube.month,range)){
-       await collectMonthly(a,cube,filters,range,{includeInteractive,includeDaily:Boolean(includeInteractive&&includeDaily),includeMunicipalLeaders:Boolean(includeMunicipalLeaders),includeHistoryComparisons,includeOriginAnalysis,includeChannelCoverage:includeChannelReference,sourceMeta:meta,membership:brandMembership,catalogExtra:catalogCurrentExtra});
+       await collectMonthly(a,cube,filters,range,{includeInteractive,includeDaily:Boolean(includeInteractive&&includeDaily),includeMunicipalLeaders:Boolean(includeMunicipalLeaders),includeFlow:Boolean(includeFlow),includeHistoryComparisons,includeOriginAnalysis,includeChannelCoverage:includeChannelReference,sourceMeta:meta,membership:brandMembership,catalogExtra:catalogCurrentExtra});
        if(includeCatalog){await collectMonthly(catalogMarket,cube,historyFilters,range,{catalogExtra:catalogMarketExtra});await collectMonthly(catalogMit,cube,{...historyFilters,marca:['MITSUBISHI']},range);}
        if(includeHistoryComparisons){await collectMonthly(historyMarket,cube,historyFilters,range,{groupDimensions:['marca','propulsao','bd_carroceria'],includeBody:true});await collectMonthly(historyMit,cube,{...historyFilters,marca:['MITSUBISHI']},range,{groupDimensions:['marca','propulsao','bd_carroceria'],includeBody:true});}
        if(includeMitsubishiProfile&&mitsubishiAllowed)await collectMonthly(mitsubishiProfile,cube,{...filters,marca:['MITSUBISHI']},range,{groupDimensions:['marca','modelo','grupo_modelo','bd_segmento','bd_classe','bd_combustivel','subsegmento','ano_fabricacao']});

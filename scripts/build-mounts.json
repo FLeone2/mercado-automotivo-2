@@ -33,7 +33,7 @@
  ],
  [
   "jsxRuntime.jsx(CompetitiveReading,{filters:effectiveFilters,manifest,base:getBase(snapshot)}), ",
-  "jsxRuntime.jsx(CompetitiveReading,{filters:effectiveFilters,manifest,base:getBase(snapshot)}), jsxRuntime.jsx(ShareDecomposition,{filters:effectiveFilters,base:getBase(snapshot)}), jsxRuntime.jsx(ModelDuel,{filters:effectiveFilters,base:getBase(snapshot)}), "
+  "jsxRuntime.jsx(CompetitiveReading,{filters:effectiveFilters,manifest,base:getBase(snapshot)}), jsxRuntime.jsx(ShareDecomposition,{filters:effectiveFilters,base:getBase(snapshot)}), jsxRuntime.jsx(ModelDuel,{filters:effectiveFilters,base:getBase(snapshot)}), jsxRuntime.jsx(FlowSankey,{filters:effectiveFilters,base:getBase(snapshot)}), "
  ],
  [
   "tab==='technology'&&jsxRuntime.jsx(TechnologyView, { model: model, scope: scope, setFilter: setFilter,})",
