@@ -36,6 +36,17 @@ def swap_style(html, sid, css):
     return html.replace('</head>', tag + '\n</head>', 1)
 
 
+# 1-. Brand identity colors for the authored scope (the runtime gets them through
+#     build-design-system.py). Ranking views and territory maps use them.
+html = swap_block(html, '// BEGIN BRAND COLORS', '// END BRAND COLORS', src('brand-colors.js'))
+rank_a, rank_b = html.index('// BEGIN RANKING VIEWS'), html.index('// END RANKING VIEWS')
+html = html[:rank_a] + '// BEGIN RANKING VIEWS\n' + src('ranking-views.js') + html[rank_b:]
+html = re.sub(r'(<style id="ranking-views-styles">).*?(</style>)', lambda m: m[1] + '\n' + src('ranking-views.css') + '\n' + m[2], html, flags=re.S)
+html = swap_block(html, '// BEGIN TERRITORY BRAND MAPS', '// END TERRITORY BRAND MAPS', src('territory-brand-maps.js'))
+html = swap_style(html, 'territory-brand-maps-styles', src('territory-brand-maps.css'))
+
+html = swap_block(html, '// BEGIN CHART SCALES', '// END CHART SCALES', src('chart-scales.js'))
+
 # 1a. Additive catalog (Mais análises / Todos os formatos).
 html = swap_block(html, '// BEGIN ADDITIVE CATALOG', '// END ADDITIVE CATALOG',
                   '\n'.join(src(n) for n in ['catalog-charts.js', 'catalog-maps.js', 'catalog-workspace.js']))

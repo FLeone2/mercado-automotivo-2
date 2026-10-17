@@ -23,6 +23,7 @@ function animationEntityColor(name,row){
  if(animationExclusiveMIT(row)||String(name).toUpperCase()==='MITSUBISHI')return 'var(--mitsubishi-color, #ed1c24)';
  const tech={ICE:'#677a94',HEV:'#23896b',PHEV:'#7d60b9',BEV:'#2389c0',MHEV:'#b68025'};if(tech[name])return tech[name];
  if(/não informado|não classificado|sem correspondência|desconhecid|indisponível/i.test(String(name)))return 'var(--secondary, #7b8492)';
+ if(typeof brandColor==='function')return brandColor(name);
  let hash=2166136261;for(const c of String(name))hash=Math.imul(hash^c.codePointAt(0),16777619)>>>0;
  return ANIMATION_COLORS[hash%ANIMATION_COLORS.length];
 }

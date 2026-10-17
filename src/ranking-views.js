@@ -8,12 +8,7 @@ function rankingControlsValid(value){
 }
 
 // Identity-based colors never depend on selection order, view, period or rank.
-function rankingBrandColor(brand){
- if(String(brand).toUpperCase()==='MITSUBISHI')return 'var(--mitsubishi-color)';
- const fixed={FIAT:'#ad6f00',VOLKSWAGEN:'#287dcc',CHEVROLET:'#8b5bd6',TOYOTA:'#008f82',HYUNDAI:'#d85899',RENAULT:'#718a00',JEEP:'#b4673c',HONDA:'#6084a5',NISSAN:'#a947ba',BYD:'#168caf',GWM:'#7270d4',FORD:'#926d23','CAOA CHERY':'#4a9861',CITROEN:'#a65b78',PEUGEOT:'#7b7991',RAM:'#38867b'};if(fixed[brand])return fixed[brand];
- let h=2166136261;for(const c of String(brand))h=Math.imul(h^c.codePointAt(0),16777619)>>>0;
- return 'hsl('+((h%300000)/1000+30)+' 65% 48%)';
-}
+function rankingBrandColor(brand){return typeof brandColor==='function'?brandColor(brand):'var(--chart-1)';}
 function rankingHighlights(counts,total,selected){return selected.filter(b=>(counts?.[b]??0)>0).map(brand=>({brand,count:counts[brand],color:rankingBrandColor(brand),exclusive:counts[brand]===total}));}
 function rankingHighlightColor(parts){return parts?.find(p=>p.exclusive)?.color;}
 function RankingBrandMarkers({parts,total}){return parts?.length?jsxRuntime.jsx('span',{className:'am-brand-markers',children:parts.map(p=>jsxRuntime.jsxs('span',{className:'am-brand-marker',style:{'--brand-color':p.color},children:[jsxRuntime.jsx('i',{'aria-hidden':true}),p.brand,!p.exclusive?' · '+number(p.count)+' de '+number(total):'']},p.brand))}):null;}

@@ -38,6 +38,18 @@
   --font-sans-default:"Geist",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol" !important;
   --font-sans:var(--font-sans-default) !important;
   --mitsubishi-color:light-dark(#c8283a,#ff5a64);
+  --brand-1:light-dark(#3a69ad,#587fc8);
+  --brand-2:light-dark(#d78a3f,#ca7e31);
+  --brand-3:light-dark(#169b86,#2fa284);
+  --brand-4:light-dark(#7f6cb4,#917ec8);
+  --brand-5:light-dark(#afa851,#9c963e);
+  --brand-6:light-dark(#a25089,#ac5892);
+  --brand-7:light-dark(#816423,#967839);
+  --brand-8:light-dark(#49a5f0,#53affa);
+  --brand-9:light-dark(#d67abb,#ee90d2);
+  --brand-10:light-dark(#1d7d34,#389249);
+  --brand-11:light-dark(#a48cec,#b39cfd);
+  --brand-12:light-dark(#6b9d3b,#80b352);
   --warning-text:light-dark(#8a5a00,#e5b76e);
   --dashboard-background:var(--background);
   --data-card-background:var(--surface);

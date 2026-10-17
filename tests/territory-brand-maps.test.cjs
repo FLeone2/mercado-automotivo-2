@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
+Object.assign(globalThis, require('../src/brand-colors.js'));
 const api = require('../src/territory-brand-maps.js');
 const html = fs.readFileSync('index.html', 'utf8');
 
@@ -19,10 +20,12 @@ assert(!tops.has('Outras UFs'), 'only real UFs');
 assert.equal(api.tbmTops(null), null);
 
 // Fixed brand colors; unknown brands are neutral and keep a readable name.
-assert.equal(api.tbmColor('FIAT'), 'var(--chart-1)');
-assert.equal(api.tbmColor('VW'), 'var(--chart-2)');
-assert.equal(api.tbmColor('BYD'), 'var(--chart-3)');
-assert.equal(api.tbmColor('GM'), 'var(--tbm-other)');
+assert.equal(api.tbmColor('FIAT'), 'var(--brand-1)');
+assert.equal(api.tbmColor('VW'), 'var(--brand-2)');
+assert.equal(api.tbmColor('BYD'), 'var(--brand-3)');
+assert.equal(api.tbmColor('GM'), 'var(--brand-4)');
+assert.equal(api.tbmColor('MITSUBISHI'), 'var(--mitsubishi-color)');
+assert.equal(api.tbmColor('GEELY'), 'var(--tbm-other)', 'brands without an identity color stay hatched');
 assert.equal(api.tbmName('CAOA CHERY'), 'Caoa Chery');
 assert.equal(api.tbmName('XPTO'), 'Xpto');
 

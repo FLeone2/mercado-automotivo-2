@@ -17,7 +17,7 @@ html = p.read_text()
 
 # 1. Theme registry (old catalog/blue blocks on first run, own markers afterwards).
 html = re.sub(r'/\* BEGIN MARKET BLUE THEME \*/.*?/\* END MARKET BLUE THEME \*/', '', html, flags=re.S)
-block = ('/* BEGIN THEME REGISTRY */\n' + (root / 'src/theme-registry.js').read_text()
+block = ('/* BEGIN THEME REGISTRY */\n' + (root / 'src/brand-colors.js').read_text() + '\n' + (root / 'src/theme-registry.js').read_text()
          + '\ninstallThemeRegistry(T5,C5);\n/* END THEME REGISTRY */')
 for start, end in [('/* BEGIN CATALOG THEMES */', '/* END CATALOG THEMES */'),
                    ('/* BEGIN THEME REGISTRY */', '/* END THEME REGISTRY */')]:
@@ -26,6 +26,10 @@ for start, end in [('/* BEGIN CATALOG THEMES */', '/* END CATALOG THEMES */'),
         break
 else:
     raise SystemExit('theme registry insertion point not found')
+
+def old_prefix_of(text, other_old):
+    return other_old in text
+
 
 # 2. Runtime safety patches (idempotent).
 patches = [
@@ -41,16 +45,25 @@ patches = [
     # The main volume measure is always slot 1, whatever other measures share its queries.
     ('function iL(e=``){let t=String(e)',
      'function iL(e=``){if(/^(?:count|total|volume|registrations)$/iu.test(String(e)))return tL[0];let t=String(e)'),
+    # Brand identity colors win over every hashed assignment, whatever the chart or dimension.
+    ('function iL(e=``){if(/^(?:count|total|volume|registrations)$/iu.test(String(e)))return tL[0];',
+     'function iL(e=``){if(brandColorKnown(e))return brandColor(e);if(/^(?:count|total|volume|registrations)$/iu.test(String(e)))return tL[0];'),
     # Brands keep fixed colors everywhere: Fiat, VW and BYD own slots 1-3; other brands hash into 4-8.
     ('function aL({field:e,dimension:t,value:n,index:r=0,explicitColor:i}={}){if(typeof i==`string`&&i.trim())return i;',
      'function aL({field:e,dimension:t,value:n,index:r=0,explicitColor:i}={}){if(typeof i==`string`&&i.trim())return i;'
      'let dsD=String(t??e??``).toLowerCase(),dsV=String(n??``).toUpperCase();if(n!=null&&/marca|brand/u.test(dsD)){let dsB={FIAT:0,VW:1,VOLKSWAGEN:1,BYD:2}[dsV];if(dsB!=null)return tL[dsB];let dsH=0;for(let c of dsV)dsH=Math.imul(31,dsH)+c.codePointAt(0)|0;return tL[3+(dsH>>>0)%(tL.length-3)]}'),
 ]
+# Patches may build on each other (a later one rewrites the text of an earlier one),
+# so apply them all first and only then check the final state of each chain.
+FINAL = {}
 for old, new in patches:
+    FINAL[old] = new
     if new not in html and old in html:
         assert html.count(old) == 1, 'ambiguous runtime patch: ' + old[:60]
         html = html.replace(old, new)
-    assert new in html, 'runtime patch missing: ' + new[:60]
+for old, new in patches:
+    superseded = any(o2 != old and old_prefix_of(new, o2) for o2, _ in patches)
+    assert new in html or superseded, 'runtime patch missing: ' + new[:60]
 
 # 3. Stylesheets: obsolete theme layers out, design system last.
 for sid in ['market-blue-theme-styles', 'catalog-themes-styles', 'design-system-styles']:

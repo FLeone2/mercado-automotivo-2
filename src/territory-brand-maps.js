@@ -4,11 +4,12 @@
    aggregate. Global filters apply; UF and municipality are released (national
    view) and the channel has its own local switch, Varejo by default, because
    fleet registrations at company headquarters distort territorial reading. */
-const TBM_SLOT={FIAT:1,VW:2,VOLKSWAGEN:2,BYD:3};
 const TBM_NAMES={FIAT:'Fiat',VW:'VW',BYD:'BYD',GM:'GM',TOYOTA:'Toyota',HYUNDAI:'Hyundai',RENAULT:'Renault',JEEP:'Jeep',HONDA:'Honda',NISSAN:'Nissan',GEELY:'Geely',GWM:'GWM',FORD:'Ford',CITROEN:'Citroën',PEUGEOT:'Peugeot','CAOA CHERY':'Caoa Chery','OMODA JAECOO':'Omoda Jaecoo',MITSUBISHI:'Mitsubishi'};
 const TBM_UF_NAMES={AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
 const tbmName=b=>TBM_NAMES[b]??(String(b).charAt(0)+String(b).slice(1).toLowerCase());
-const tbmColor=b=>TBM_SLOT[b]?'var(--chart-'+TBM_SLOT[b]+')':'var(--tbm-other)';
+// Every brand with an identity color (src/brand-colors.js) is painted; the rest are hatched and named.
+const tbmKnown=b=>typeof brandColorKnown==='function'&&brandColorKnown(b);
+const tbmColor=b=>tbmKnown(b)?brandColor(b):'var(--tbm-other)';
 const tbmInt=n=>n==null||!Number.isFinite(n)?'—':Math.round(n).toLocaleString('pt-BR');
 const tbmPct=x=>x==null||!Number.isFinite(x)?'—':(x*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
 const tbmEase=t=>1-Math.pow(1-t,3);
@@ -112,27 +113,29 @@ function TopThreeMap({tops,states}){
  const tipFor=uf=>{const e=tops.get(uf);return hs('div',{children:[h('strong',{children:TBM_UF_NAMES[uf]}),...e.top.map((x,i)=>hs('div',{className:'tbm-tip-row',children:[hs('span',{children:[h('i',{style:{background:tbmColor(x.b)}}),(i+1)+'º '+tbmName(x.b)]}),h('span',{children:tbmPct(x.s)})]},x.b)),hs('div',{className:'tbm-tip-row tbm-muted',children:[h('span',{children:'Total no estado'}),h('span',{children:tbmInt(e.total)})]})]});};
  const enter=(uf,e)=>{setHover(uf);setTip({uf,x:e.clientX,y:e.clientY});};
  const leave=()=>{setHover(null);setTip(null);};
- const fill=(uf,pos,id)=>{const e=tops.get(uf);if(pos!=null){const b=e.top[pos]?.b;return b?(TBM_SLOT[b]?tbmColor(b):'url(#'+id+'-hatch)'):'var(--muted)';}return 'url(#'+id+'-g-'+uf+')';};
+ const fill=(uf,pos,id)=>{const e=tops.get(uf);if(pos!=null){const b=e.top[pos]?.b;return b?(tbmKnown(b)?tbmColor(b):'url(#'+id+'-hatch)'):'var(--muted)';}return 'url(#'+id+'-g-'+uf+')';};
  const map=(id,pos,small)=>hs('svg',{viewBox:value$3.viewBox,className:'tbm-svg',role:'img','aria-label':pos==null?'Três primeiras marcas por estado':(pos+1)+'º lugar por estado',children:[
   hs('defs',{children:[
    hs('pattern',{id:id+'-hatch',width:5,height:5,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)',children:[h('rect',{width:5,height:5,fill:'var(--tbm-other)',opacity:.45}),h('rect',{width:2.2,height:5,fill:'var(--tbm-other)'})]}),
    pos==null&&ufs.map(s=>{const e=tops.get(s.uf),sum=e.top.reduce((a,x)=>a+x.v,0),gap=.012;let acc=0;const stops=[];
-    e.top.forEach((x,i)=>{const w=x.v/sum,a=acc+(i?gap/2:0),z=acc+w-(i<e.top.length-1?gap/2:0),c=tbmColor(x.b),o=TBM_SLOT[x.b]?1:.7;
+    e.top.forEach((x,i)=>{const w=x.v/sum,a=acc+(i?gap/2:0),z=acc+w-(i<e.top.length-1?gap/2:0),c=tbmColor(x.b),o=tbmKnown(x.b)?1:.7;
      if(i)stops.push(h('stop',{offset:acc-gap/2,stopColor:'var(--surface)'},'s'+i),h('stop',{offset:a,stopColor:'var(--surface)'},'t'+i));
      stops.push(h('stop',{offset:a,stopColor:c,stopOpacity:o},'a'+i),h('stop',{offset:z,stopColor:c,stopOpacity:o},'z'+i));acc+=w;});
     return h('linearGradient',{id:id+'-g-'+s.uf,children:stops},s.uf);})]}),
   ...ufs.map(s=>h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(s.uf,pos,id),tabIndex:small?-1:0,'aria-label':TBM_UF_NAMES[s.uf]+': '+tops.get(s.uf).top.map(x=>tbmName(x.b)+' '+tbmPct(x.s)).join(', '),
    onMouseMove:e=>enter(s.uf,e),onMouseLeave:leave,onFocus:e=>{const r=e.currentTarget.getBoundingClientRect();enter(s.uf,{clientX:r.right,clientY:r.top});},onBlur:leave},s.uf)),
-  ...ufs.map(s=>{const lead=tops.get(s.uf).top[pos??0]?.b;return lead&&!TBM_SLOT[lead]?h('text',{x:s.cx,y:s.cy+3,className:'tbm-label',children:tbmName(lead)},'l'+s.uf):null;})]});
+  ...ufs.map(s=>{const lead=tops.get(s.uf).top[pos??0]?.b;return lead&&!tbmKnown(lead)?h('text',{x:s.cx,y:s.cy+3,className:'tbm-label',children:tbmName(lead)},'l'+s.uf):null;})]});
  const rows=[...ufs].sort((a,b)=>tops.get(b.uf).total-tops.get(a.uf).total);
+ const shown=new Map();ufs.forEach(s=>tops.get(s.uf).top.forEach(x=>shown.set(x.b,(shown.get(x.b)||0)+x.v)));
+ const legendBrands=[...shown.keys()].filter(tbmKnown).sort((a,b)=>shown.get(b)-shown.get(a)),hasOther=[...shown.keys()].some(b=>!tbmKnown(b));
  return hs('div',{className:'tbm-card',children:[
   hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Top 3 marcas por estado'}),h('p',{children:'Cada estado em três faixas, da 1ª à 3ª marca, com largura proporcional às vendas de cada uma.'})]}),
    h('div',{className:'tbm-seg',role:'group','aria-label':'Forma do mapa',children:[['bands','Faixas'],['multi','1º · 2º · 3º lugar']].map(([v,l])=>h('button',{type:'button','aria-pressed':mode===v,onClick:()=>setMode(v),children:l},v))})]}),
-  hs('div',{className:'tbm-legend',children:[['FIAT','Fiat'],['VW','VW'],['BYD','BYD']].map(([b,l])=>hs('span',{children:[h('i',{style:{background:tbmColor(b)}}),l]},b)).concat(hs('span',{children:[h('i',{className:'tbm-hatch'}),'Outras marcas (nome no mapa e na lista)']},'o'))}),
+  hs('div',{className:'tbm-legend',children:legendBrands.map(b=>hs('span',{children:[h('i',{style:{background:tbmColor(b)}}),tbmName(b)]},b)).concat(hasOther?[hs('span',{children:[h('i',{className:'tbm-hatch'}),'Outras marcas (nome no mapa e na lista)']},'o')]:[])}),
   hs('div',{className:'tbm-top3',children:[
    h('div',{className:'tbm-fade',children:mode==='bands'?map('tbmb',null,false):h('div',{className:'tbm-multi',children:[0,1,2].map(i=>hs('figure',{children:[h('figcaption',{children:(i+1)+'º lugar'}),map('tbmm'+i,i,true)]},i))})},mode),
    hs('div',{className:'tbm-rank',role:'list','aria-label':'Três primeiras marcas por estado',children:rows.map(s=>{const e=tops.get(s.uf);return hs('div',{role:'listitem',className:'tbm-row'+(hover===s.uf?' is-hl':''),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),children:[
-    h('b',{children:s.uf}),h('span',{className:'tbm-stack',children:e.top.map(x=>h('span',{className:TBM_SLOT[x.b]?'':'tbm-hatch',style:{width:(x.s*100).toFixed(1)+'%',background:TBM_SLOT[x.b]?tbmColor(x.b):undefined},title:tbmName(x.b)+' '+tbmPct(x.s)},x.b))}),
+    h('b',{children:s.uf}),h('span',{className:'tbm-stack',children:e.top.map(x=>h('span',{className:tbmKnown(x.b)?'':'tbm-hatch',style:{width:(x.s*100).toFixed(1)+'%',background:tbmKnown(x.b)?tbmColor(x.b):undefined},title:tbmName(x.b)+' '+tbmPct(x.s)},x.b))}),
     h('span',{className:'tbm-names',children:e.top.map(x=>tbmName(x.b)).join(' · ')})]},s.uf);})})]}),
   tip&&h('div',{className:'tbm-tip',style:{left:tip.x+14,top:tip.y+14},children:tipFor(tip.uf)})]});
 }
