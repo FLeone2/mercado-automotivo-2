@@ -27,3 +27,13 @@
 .pm-primary .pm-national-value{font-size:clamp(32px,4vw,44px);line-height:1.15;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text,#172d4b)}
 .pm-primary .pm-national-metric{font-size:13px;line-height:1.4;color:var(--secondary,#64748b)}
 .pm-primary .pm-national-hint{max-width:360px;font-size:13px;line-height:1.6;color:var(--secondary,#64748b)}
+/* Zoom transition: national map zooms into the state; municipalities fade in.
+   The map area clips so the zoom never spills over the panel. */
+.pm-primary .pm-map-area{overflow:hidden;border-radius:8px}
+.pm-primary .pm-zoom-wait{position:relative}
+.pm-primary .pm-zoomed .pm-state{cursor:default;transition:opacity .3s}
+.pm-primary .pm-zoomed .pm-state.is-faded{opacity:.25}
+.pm-primary .pm-zoom-label{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-size:12px;color:var(--secondary);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 10px}
+@keyframes pm-enter{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+.pm-primary .pm-enter{animation:pm-enter .32s cubic-bezier(.2,.7,.2,1) both;transform-origin:50% 50%}
+@media(prefers-reduced-motion:reduce){.pm-primary .pm-enter{animation:none}}
