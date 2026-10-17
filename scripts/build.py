@@ -26,6 +26,7 @@ src = lambda name: (root / 'src' / name).read_text()
 # lives; a block missing from index.html is inserted before useMarketData.
 MODULES = [
     ('BRAND COLORS', ['brand-colors.js']),
+    ('DISPLAY FILTERS', ['display-filters.js']),
     ('CHART SCALES', ['chart-scales.js']),
     ('RANKING VIEWS', ['ranking-views.js']),
     ('TERRITORY CHANNELS', ['territory-channels.js']),

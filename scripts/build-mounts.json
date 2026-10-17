@@ -46,5 +46,17 @@
  [
   "tab==='quality'?jsxRuntime.jsx(QualityView, { manifest: manifest,})",
   "tab==='quality'?jsxRuntime.jsxs(jsxRuntime.Fragment,{children:[jsxRuntime.jsx(TrustGuide,{manifest}),jsxRuntime.jsx(QualityView, { manifest: manifest,})]})"
+ ],
+ [
+  "else setState({pending:false,result:data.result??null,error:data.error??null,progress:null,signature:activeSignature.current});};",
+  "else setState({pending:false,result:hideUnclassified(data.result??null),error:data.error??null,progress:null,signature:activeSignature.current});};"
+ ],
+ [
+  "if(!data.progress)setState({pending:false,result:data.result,error:data.error,signature:activeSignature.current});};",
+  "if(!data.progress)setState({pending:false,result:hideUnclassified(data.result),error:data.error,signature:activeSignature.current});};"
+ ],
+ [
+  "else setState({result:data.result??null,pending:false,progress:null,error:data.error??null,key:activeRequest.current});};",
+  "else setState({result:hideUnclassified(data.result??null),pending:false,progress:null,error:data.error??null,key:activeRequest.current});};"
  ]
 ]

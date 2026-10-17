@@ -123,7 +123,7 @@ function ShareDecomposition({filters,base}){
   const back=m=>`${+m.slice(0,4)-1}${m.slice(4)}`,steps=[['start',hxMonth(back(period[0]))+(period.length>1?'–'+hxMonth(back(period.at(-1))):'')+' (ano anterior)',d.V0,'total'],['market','Tamanho do mercado',d.market,'delta'],['mix','Mix de segmentos',d.mix,'delta'],['perf','Desempenho dentro dos segmentos',d.perf,'delta'],['end',hxMonth(period[0])+(period.length>1?'–'+hxMonth(period.at(-1)):'')+' (atual)',d.V1,'total']];
   let run=0;const bars=steps.map(([key,label,v,kind])=>{const from=kind==='total'?0:run,to=kind==='total'?v:run+v;if(kind==='total')run=v;else run=to;return {key,label,v,kind,from:Math.min(from,to),to:Math.max(from,to)};});
   const max=Math.max(...bars.map(b=>b.to),1),min=Math.min(0,...bars.map(b=>b.from)),scale=v=>((v-min)/(max-min))*100;
-  const top=d.bySeg.filter(s=>Math.abs(s.perf)>=1).slice(0,3);
+  const top=d.bySeg.filter(s=>Math.abs(s.perf)>=1&&!(typeof HIDDEN_CATEGORIES!=='undefined'&&HIDDEN_CATEGORIES.has(s.segment))).slice(0,3);
   const sentence=(v,pos,neg)=>Math.abs(v)<0.5?null:(v>0?pos:neg).replace('{v}',hxFmt.n(Math.abs(v)));
   return hs(jsxRuntime.Fragment,{children:[
    h('div',{className:'hx-waterfall',role:'img','aria-label':'Variação de '+hxFmt.n(d.V0)+' para '+hxFmt.n(d.V1)+' emplacamentos',children:bars.map(b=>hs('div',{className:'hx-wf-row',children:[h('span',{className:'hx-wf-label',children:b.label}),h('div',{className:'hx-wf-track',children:h('i',{className:'hx-wf-bar hx-wf-'+(b.kind==='total'?'total':b.v>=0?'up':'down'),style:{left:scale(b.from)+'%',width:Math.max(.4,scale(b.to)-scale(b.from))+'%'}})}),h('b',{children:b.kind==='total'?hxFmt.n(b.v):hxFmt.sn(b.v)})]},b.key))}),

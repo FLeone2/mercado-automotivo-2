@@ -30,7 +30,8 @@ function evolutionBrushSummary(snapshot,dimension,selection,granularity='month')
  const rows=[...counts].map(([name,count])=>({name,count,denominator:total,share:total>0?count/total:null})).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));
  const accounted=rows.reduce((s,r)=>s+r.count,0);
  if(accounted!==total)return {rows:[],total,complete:false,months:[...selected],reason:'A dimensão não cobre o total deste recorte; percentuais indisponíveis.'};
- return {rows,total,complete:true,months:[...selected],reason:total===0?'Nenhum emplacamento na faixa selecionada.':null};
+ // Shares use the full total; near-empty unclassified categories are only left out of the list.
+ return {rows:rows.filter(r=>!(typeof HIDDEN_CATEGORIES!=='undefined'&&HIDDEN_CATEGORIES.has(r.name))),total,complete:true,months:[...selected],reason:total===0?'Nenhum emplacamento na faixa selecionada.':null};
 }
 function evolutionBrushIndex(clientX,bounds,length){return Math.max(0,Math.min(length-1,Math.floor(((clientX-bounds.left)/Math.max(bounds.width,1)*840-60)/730*length)));}
 function EvolutionBrushChart({snapshot,filters={},scope=[],granularity='month',onGranularity}){
