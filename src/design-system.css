@@ -100,3 +100,8 @@ body,button,input,select,textarea,svg text{font-family:var(--font-sans) !importa
 :root .am-app .dashboard-component{animation:ds-settle .28s var(--ds-ease) both}
 @media (prefers-reduced-motion:reduce){:root .am-app .dashboard-component{animation:none}}
 @media (forced-colors:active){:root .am-primary-nav .am-nav-link[aria-current=page]{outline:2px solid Highlight}}
+
+/* Mais análises: visible, titled block instead of a collapsed toggle. */
+.catalog-extras.is-open{margin-top:24px;display:flex;flex-direction:column;gap:12px}
+.catalog-extras-head h2{margin:0;font-size:clamp(18px,1.6vw,21px);font-weight:650;letter-spacing:-.01em}
+.catalog-extras-head p{margin:2px 0 0;font-size:13px;color:var(--secondary)}
