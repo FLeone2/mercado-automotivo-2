@@ -105,3 +105,20 @@ body,button,input,select,textarea,svg text{font-family:var(--font-sans) !importa
 .catalog-extras.is-open{margin-top:24px;display:flex;flex-direction:column;gap:12px}
 .catalog-extras-head h2{margin:0;font-size:clamp(18px,1.6vw,21px);font-weight:650;letter-spacing:-.01em}
 .catalog-extras-head p{margin:2px 0 0;font-size:13px;color:var(--secondary)}
+
+/* Disclosure: one design for every collapsible block. */
+:root .am-app :is(details,.ev-interactive){background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0;overflow:hidden;box-shadow:none}
+:root .am-app :is(details>summary,.ev-interactive-toggle){display:flex;align-items:center;gap:10px;min-height:46px;margin:0;padding:12px 16px;width:100%;box-sizing:border-box;background:var(--muted);border:0;border-radius:0;color:var(--text);font:600 14px/1.4 var(--font-sans);text-align:left;cursor:pointer;list-style:none;transition:background-color .15s}
+:root .am-app :is(details>summary,.ev-interactive-toggle):hover{background:var(--control-hover)}
+:root .am-app details>summary::-webkit-details-marker{display:none}
+:root .am-app :is(details>summary,.ev-interactive-toggle)::before{content:'';flex:none;width:0;height:0;border-left:6px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s var(--ds-ease,ease)}
+:root .am-app :is(details[open]>summary,.ev-interactive-toggle[aria-expanded=true])::before{transform:rotate(90deg)}
+:root .am-app :is(details[open]>summary,.ev-interactive-toggle[aria-expanded=true]){border-bottom:1px solid var(--border)}
+:root .am-app details>:not(summary){margin-inline:16px}
+:root .am-app details>summary+*{margin-top:14px}
+:root .am-app details>:last-child{margin-bottom:14px}
+:root .am-app .ev-interactive-body{padding:16px}
+/* Mais análises is a titled block, not a card: no clipped heading, no frame. */
+:root .am-app .catalog-extras.is-open{border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible;padding:0}
+:root .am-app .catalog-notes{margin:12px 0}
+:root .am-app .catalog-notes .catalog-scope{border:0;background:transparent;padding:0;margin:0}
