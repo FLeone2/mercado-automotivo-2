@@ -47,7 +47,7 @@ patches = [
      'let dsD=String(t??e??``).toLowerCase(),dsV=String(n??``).toUpperCase();if(n!=null&&/marca|brand/u.test(dsD)){let dsB={FIAT:0,VW:1,VOLKSWAGEN:1,BYD:2}[dsV];if(dsB!=null)return tL[dsB];let dsH=0;for(let c of dsV)dsH=Math.imul(31,dsH)+c.codePointAt(0)|0;return tL[3+(dsH>>>0)%(tL.length-3)]}'),
 ]
 for old, new in patches:
-    if old in html:
+    if new not in html and old in html:
         assert html.count(old) == 1, 'ambiguous runtime patch: ' + old[:60]
         html = html.replace(old, new)
     assert new in html, 'runtime patch missing: ' + new[:60]

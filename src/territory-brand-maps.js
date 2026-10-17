@@ -1,0 +1,230 @@
+/* Territory brand maps: top 3 brands per state, municipal spikes and states in 3D.
+   Live data from the same worker as the rest of the dashboard: brand × UF comes
+   from the exploration query, municipal and state volumes from the primary-map
+   aggregate. Global filters apply; UF and municipality are released (national
+   view) and the channel has its own local switch, Varejo by default, because
+   fleet registrations at company headquarters distort territorial reading. */
+const TBM_SLOT={FIAT:1,VW:2,VOLKSWAGEN:2,BYD:3};
+const TBM_NAMES={FIAT:'Fiat',VW:'VW',BYD:'BYD',GM:'GM',TOYOTA:'Toyota',HYUNDAI:'Hyundai',RENAULT:'Renault',JEEP:'Jeep',HONDA:'Honda',NISSAN:'Nissan',GEELY:'Geely',GWM:'GWM',FORD:'Ford',CITROEN:'Citroën',PEUGEOT:'Peugeot','CAOA CHERY':'Caoa Chery','OMODA JAECOO':'Omoda Jaecoo',MITSUBISHI:'Mitsubishi'};
+const TBM_UF_NAMES={AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
+const tbmName=b=>TBM_NAMES[b]??(String(b).charAt(0)+String(b).slice(1).toLowerCase());
+const tbmColor=b=>TBM_SLOT[b]?'var(--chart-'+TBM_SLOT[b]+')':'var(--tbm-other)';
+const tbmInt=n=>n==null||!Number.isFinite(n)?'—':Math.round(n).toLocaleString('pt-BR');
+const tbmPct=x=>x==null||!Number.isFinite(x)?'—':(x*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+const tbmEase=t=>1-Math.pow(1-t,3);
+const tbmReducedMotion=()=>globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const tbmPointsCache=new Map();
+
+function useTbmPoints(base){
+ const [state,setState]=React.useState(()=>({data:tbmPointsCache.get(base)??null,error:null}));
+ React.useEffect(()=>{if(tbmPointsCache.has(base)){setState({data:tbmPointsCache.get(base),error:null});return;}let active=true;const controller=new AbortController();
+  fetch(new URL('geography/municipal-points.json',base),{signal:controller.signal,credentials:'same-origin',redirect:'error'}).then(r=>{if(!r.ok)throw Error('Posições municipais indisponíveis.');return r.json();})
+   .then(data=>{if(data.version!==1||!Array.isArray(data.rows))throw Error('Posições municipais incompatíveis.');tbmPointsCache.set(base,data);if(active)setState({data,error:null});})
+   .catch(e=>{if(active&&e.name!=='AbortError')setState({data:null,error:e.message});});
+  return()=>{active=false;controller.abort();};},[base]);
+ return state;
+}
+
+// Brand × UF cells → per state: top 3 brands with their share of the state total.
+function tbmTops(result){
+ if(!result?.cells)return null;
+ const others=result.seriesOthersLabel,byUF=new Map();
+ for(const c of result.cells){if(!TBM_UF_NAMES[c.x])continue;const e=byUF.get(c.x)??{total:c.categoryDenominator??null,list:[]};if(c.series!==others&&c.observedCount>0)e.list.push({b:c.series,v:c.observedCount});byUF.set(c.x,e);}
+ for(const e of byUF.values()){e.list.sort((a,b)=>b.v-a.v);if(!(e.total>0))e.total=e.list.reduce((s,x)=>s+x.v,0);e.top=e.list.slice(0,3).map(x=>({...x,s:x.v/e.total}));}
+ return byUF;
+}
+
+const tbmStates=()=>value$3.features.map(f=>{const n=f.path.match(/-?\d+(?:\.\d+)?/g).map(Number);let sx=0,sy=0,c=0;for(let i=0;i<n.length;i+=2){sx+=n[i];sy+=n[i+1];c++;}return {uf:f.uf,d:f.path,p:new Path2D(f.path),cx:sx/c,cy:sy/c,n};});
+
+/* ---------- orbit view shared by the two canvases ---------- */
+function tbmGeometry(states){
+ const out=[];states.forEach(s=>{for(let i=0;i<s.n.length;i+=8)out.push([s.n[i],s.n[i+1]]);});
+ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;out.forEach(([x,y])=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);});
+ const C=[(x0+x1)/2,(y0+y1)/2];let R=0;
+ // Widest extent over all rotations, so the scale never pulses while orbiting.
+ for(let k=0;k<36;k++){const t=k*Math.PI/36,a=Math.cos(t),b=Math.sin(t);let lo=1e9,hi=-1e9;for(const [x,y] of out){const r=a*(x-C[0])-b*(y-C[1]);lo=Math.min(lo,r);hi=Math.max(hi,r);}R=Math.max(R,hi-lo);}
+ return {C,R:R*1.03};
+}
+function tbmProjection(view,geo,w,Hmax){
+ const s=w*.96/geo.R,ky=Math.cos(view.tilt*Math.PI/180),hz=Math.sin(view.tilt*Math.PI/180),a=Math.cos(view.yaw*Math.PI/180),b=Math.sin(view.yaw*Math.PI/180),[cx,cy]=geo.C;
+ const H=Math.round(geo.R*s*ky+Hmax*hz+34),ox=w/2,oy=Hmax*hz+18+geo.R*s*ky/2;
+ return {s,ky,H,Hz:Hmax*hz,
+  P:(x,y)=>{const dx=x-cx,dy=y-cy;return [ox+(a*dx-b*dy)*s,oy+(b*dx+a*dy)*s*ky];},
+  mat:(dpr,z=0)=>[dpr*a*s,dpr*b*s*ky,-dpr*b*s,dpr*a*s*ky,dpr*(ox-s*(a*cx-b*cy)),dpr*(oy-z-s*ky*(b*cx+a*cy))]};
+}
+function useOrbit(home){
+ const [view,setView]=React.useState(home),[spin,setSpin]=React.useState(false),drag=React.useRef(null),anim=React.useRef(0),current=React.useRef(home);
+ current.current=view;
+ const animateTo=React.useCallback(target=>{cancelAnimationFrame(anim.current);setSpin(false);if(tbmReducedMotion()){setView(target);return;}
+  const from=current.current,t0=performance.now(),dy=((target.yaw-from.yaw+540)%360)-180;
+  const step=now=>{const k=Math.min(1,(now-t0)/650),e=tbmEase(k);setView({yaw:from.yaw+dy*e,tilt:from.tilt+(target.tilt-from.tilt)*e});if(k<1)anim.current=requestAnimationFrame(step);};anim.current=requestAnimationFrame(step);},[]);
+ React.useEffect(()=>{if(!spin)return;let last=performance.now(),id;const step=now=>{setView(v=>({...v,yaw:((v.yaw+(now-last)*.012)%360+540)%360-180}));last=now;id=requestAnimationFrame(step);};id=requestAnimationFrame(step);return()=>cancelAnimationFrame(id);},[spin]);
+ React.useEffect(()=>()=>cancelAnimationFrame(anim.current),[]);
+ const handlers={
+  onPointerDown:e=>{drag.current={x:e.clientX,y:e.clientY,view,moved:false};e.currentTarget.setPointerCapture?.(e.pointerId);setSpin(false);},
+  onPointerMove:e=>{const d=drag.current;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(!d.moved&&Math.abs(dx)+Math.abs(dy)<4)return;d.moved=true;setView({yaw:((d.view.yaw+dx*.45)%360+540)%360-180,tilt:Math.max(home.minT,Math.min(home.maxT,d.view.tilt-dy*.3))});},
+  onPointerUp:()=>{drag.current=null;},onPointerCancel:()=>{drag.current=null;}};
+ return {view,setView,spin,setSpin,animateTo,handlers,dragging:()=>Boolean(drag.current?.moved)};
+}
+function OrbitControls({orbit,home}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
+ const views=[['Frente',{yaw:0,tilt:home.tilt}],['Lado oeste',{yaw:-90,tilt:72}],['Lado leste',{yaw:90,tilt:72}],['De trás',{yaw:180,tilt:60}]];
+ return hs('div',{className:'tbm-orbit',children:[
+  h('span',{className:'tbm-hint',children:'Arraste o mapa para girar e inclinar'}),
+  h('div',{className:'tbm-seg',role:'group','aria-label':'Pontos de vista',children:views.map(([label,to])=>h('button',{type:'button',onClick:()=>orbit.animateTo(to),children:label},label))}),
+  hs('label',{className:'tbm-range',children:['Rotação',h('input',{type:'range',min:-180,max:180,value:Math.round(orbit.view.yaw),'aria-label':'Rotação',onChange:e=>{orbit.setSpin(false);orbit.setView(v=>({...v,yaw:+e.target.value}));}})]}),
+  hs('label',{className:'tbm-range',children:['Inclinação',h('input',{type:'range',min:home.minT,max:home.maxT,value:Math.round(orbit.view.tilt),'aria-label':'Inclinação',onChange:e=>orbit.setView(v=>({...v,tilt:+e.target.value}))})]}),
+  h('button',{type:'button',className:'tbm-btn','aria-pressed':orbit.spin,onClick:()=>orbit.setSpin(s=>!s),children:orbit.spin?'Pausar giro':'Girar sozinho'}),
+  h('button',{type:'button',className:'tbm-btn',onClick:()=>orbit.animateTo(home),children:'Voltar ao início'})]});
+}
+function useCanvasWidth(ref){
+ const [w,setW]=React.useState(0);
+ React.useEffect(()=>{const el=ref.current;if(!el)return;const ro=new ResizeObserver(([e])=>setW(Math.round(e.contentRect.width)));ro.observe(el);return()=>ro.disconnect();},[ref]);
+ return w;
+}
+// Animate normalized heights toward their targets whenever the data changes.
+function useTweened(target){
+ const [cur,setCur]=React.useState(target),from=React.useRef(target);
+ React.useEffect(()=>{if(!target)return;const start=from.current&&from.current.length===target.length?from.current:target.map(()=>0);if(tbmReducedMotion()){setCur(target);from.current=target;return;}
+  const t0=performance.now();let id;const step=now=>{const k=Math.min(1,(now-t0)/650),e=tbmEase(k);const v=target.map((x,i)=>start[i]+(x-start[i])*e);from.current=v;setCur(v);if(k<1)id=requestAnimationFrame(step);};id=requestAnimationFrame(step);return()=>cancelAnimationFrame(id);},[target]);
+ return cur;
+}
+const tbmCss=(el,name)=>getComputedStyle(el).getPropertyValue(name).trim();
+function tbmResolve(el,value){const host=el.parentElement??el,probe=document.createElement('span');probe.style.color=value;host.appendChild(probe);const c=getComputedStyle(probe).color;probe.remove();return c;}
+let tbmPixel=null;
+// Any CSS color (rgb, color(srgb …), oklab …) → rgb by painting one pixel.
+function tbmShade(color,f){tbmPixel??=document.createElement('canvas').getContext('2d',{willReadFrequently:true});tbmPixel.clearRect(0,0,1,1);tbmPixel.fillStyle='#000';tbmPixel.fillStyle=color;tbmPixel.fillRect(0,0,1,1);const [r,g,b]=tbmPixel.getImageData(0,0,1,1).data;const k=x=>Math.max(0,Math.min(255,Math.round(x*f)));return 'rgb('+k(r)+','+k(g)+','+k(b)+')';}
+
+/* ---------- 1. top 3 per state ---------- */
+function TopThreeMap({tops,states}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
+ const [mode,setMode]=React.useState('bands'),[hover,setHover]=React.useState(null),[tip,setTip]=React.useState(null);
+ const ufs=states.filter(s=>tops.get(s.uf)?.top?.length);
+ const tipFor=uf=>{const e=tops.get(uf);return hs('div',{children:[h('strong',{children:TBM_UF_NAMES[uf]}),...e.top.map((x,i)=>hs('div',{className:'tbm-tip-row',children:[hs('span',{children:[h('i',{style:{background:tbmColor(x.b)}}),(i+1)+'º '+tbmName(x.b)]}),h('span',{children:tbmPct(x.s)})]},x.b)),hs('div',{className:'tbm-tip-row tbm-muted',children:[h('span',{children:'Total no estado'}),h('span',{children:tbmInt(e.total)})]})]});};
+ const enter=(uf,e)=>{setHover(uf);setTip({uf,x:e.clientX,y:e.clientY});};
+ const leave=()=>{setHover(null);setTip(null);};
+ const fill=(uf,pos,id)=>{const e=tops.get(uf);if(pos!=null){const b=e.top[pos]?.b;return b?(TBM_SLOT[b]?tbmColor(b):'url(#'+id+'-hatch)'):'var(--muted)';}return 'url(#'+id+'-g-'+uf+')';};
+ const map=(id,pos,small)=>hs('svg',{viewBox:value$3.viewBox,className:'tbm-svg',role:'img','aria-label':pos==null?'Três primeiras marcas por estado':(pos+1)+'º lugar por estado',children:[
+  hs('defs',{children:[
+   hs('pattern',{id:id+'-hatch',width:5,height:5,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)',children:[h('rect',{width:5,height:5,fill:'var(--tbm-other)',opacity:.45}),h('rect',{width:2.2,height:5,fill:'var(--tbm-other)'})]}),
+   pos==null&&ufs.map(s=>{const e=tops.get(s.uf),sum=e.top.reduce((a,x)=>a+x.v,0),gap=.012;let acc=0;const stops=[];
+    e.top.forEach((x,i)=>{const w=x.v/sum,a=acc+(i?gap/2:0),z=acc+w-(i<e.top.length-1?gap/2:0),c=tbmColor(x.b),o=TBM_SLOT[x.b]?1:.7;
+     if(i)stops.push(h('stop',{offset:acc-gap/2,stopColor:'var(--surface)'},'s'+i),h('stop',{offset:a,stopColor:'var(--surface)'},'t'+i));
+     stops.push(h('stop',{offset:a,stopColor:c,stopOpacity:o},'a'+i),h('stop',{offset:z,stopColor:c,stopOpacity:o},'z'+i));acc+=w;});
+    return h('linearGradient',{id:id+'-g-'+s.uf,children:stops},s.uf);})]}),
+  ...ufs.map(s=>h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(s.uf,pos,id),tabIndex:small?-1:0,'aria-label':TBM_UF_NAMES[s.uf]+': '+tops.get(s.uf).top.map(x=>tbmName(x.b)+' '+tbmPct(x.s)).join(', '),
+   onMouseMove:e=>enter(s.uf,e),onMouseLeave:leave,onFocus:e=>{const r=e.currentTarget.getBoundingClientRect();enter(s.uf,{clientX:r.right,clientY:r.top});},onBlur:leave},s.uf)),
+  ...ufs.map(s=>{const lead=tops.get(s.uf).top[pos??0]?.b;return lead&&!TBM_SLOT[lead]?h('text',{x:s.cx,y:s.cy+3,className:'tbm-label',children:tbmName(lead)},'l'+s.uf):null;})]});
+ const rows=[...ufs].sort((a,b)=>tops.get(b.uf).total-tops.get(a.uf).total);
+ return hs('div',{className:'tbm-card',children:[
+  hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Top 3 marcas por estado'}),h('p',{children:'Cada estado em três faixas, da 1ª à 3ª marca, com largura proporcional às vendas de cada uma.'})]}),
+   h('div',{className:'tbm-seg',role:'group','aria-label':'Forma do mapa',children:[['bands','Faixas'],['multi','1º · 2º · 3º lugar']].map(([v,l])=>h('button',{type:'button','aria-pressed':mode===v,onClick:()=>setMode(v),children:l},v))})]}),
+  hs('div',{className:'tbm-legend',children:[['FIAT','Fiat'],['VW','VW'],['BYD','BYD']].map(([b,l])=>hs('span',{children:[h('i',{style:{background:tbmColor(b)}}),l]},b)).concat(hs('span',{children:[h('i',{className:'tbm-hatch'}),'Outras marcas (nome no mapa e na lista)']},'o'))}),
+  hs('div',{className:'tbm-top3',children:[
+   h('div',{className:'tbm-fade',children:mode==='bands'?map('tbmb',null,false):h('div',{className:'tbm-multi',children:[0,1,2].map(i=>hs('figure',{children:[h('figcaption',{children:(i+1)+'º lugar'}),map('tbmm'+i,i,true)]},i))})},mode),
+   hs('div',{className:'tbm-rank',role:'list','aria-label':'Três primeiras marcas por estado',children:rows.map(s=>{const e=tops.get(s.uf);return hs('div',{role:'listitem',className:'tbm-row'+(hover===s.uf?' is-hl':''),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),children:[
+    h('b',{children:s.uf}),h('span',{className:'tbm-stack',children:e.top.map(x=>h('span',{className:TBM_SLOT[x.b]?'':'tbm-hatch',style:{width:(x.s*100).toFixed(1)+'%',background:TBM_SLOT[x.b]?tbmColor(x.b):undefined},title:tbmName(x.b)+' '+tbmPct(x.s)},x.b))}),
+    h('span',{className:'tbm-names',children:e.top.map(x=>tbmName(x.b)).join(' · ')})]},s.uf);})})]}),
+  tip&&h('div',{className:'tbm-tip',style:{left:tip.x+14,top:tip.y+14},children:tipFor(tip.uf)})]});
+}
+
+/* ---------- 2. municipal spikes ---------- */
+function SpikeMap({spikes,states,geo,channelLabel}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
+ const wrap=React.useRef(null),canvas=React.useRef(null),w=useCanvasWidth(wrap);
+ const home={yaw:0,tilt:55,minT:15,maxT:82},orbit=useOrbit(home);
+ const [color,setColor]=React.useState('market'),[hover,setHover]=React.useState(null),[tip,setTip]=React.useState(null);
+ const values=color==='mit'?spikes.mit:spikes.market;
+ const target=React.useMemo(()=>{const max=Math.max(1,...values);return values.map(v=>v/max);},[values]);
+ const cur=useTweened(target);
+ const frame=React.useRef(null);
+ React.useEffect(()=>{const cv=canvas.current;if(!cv||!w||!cur)return;const dpr=Math.min(devicePixelRatio||1,2),pr=tbmProjection(orbit.view,geo,w,Math.min(260,w*.32));
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(pr.H*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(pr.H*dpr);cv.style.height=pr.H+'px';}
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,pr.H);
+  ctx.save();ctx.setTransform(...pr.mat(dpr));ctx.fillStyle=tbmResolve(cv,'var(--muted)');ctx.strokeStyle=tbmResolve(cv,'var(--surface)');ctx.lineWidth=1.2/pr.s;states.forEach(s=>{ctx.fill(s.p);ctx.stroke(s.p);});ctx.restore();
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const col=tbmResolve(cv,color==='mit'?'var(--mitsubishi-color)':'var(--accent)'),pts=spikes.points.map(p=>pr.P(p[0],p[1]));
+  const order=cur.map((v,i)=>i).filter(i=>cur[i]>.0015).sort((a,b)=>pts[a][1]-pts[b][1]),bw=Math.max(1.6,pr.s*1.6);
+  ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=.6;
+  for(const i of order){const [x,y]=pts[i],hh=cur[i]*pr.Hz;ctx.beginPath();ctx.moveTo(x-bw,y);ctx.lineTo(x,y-hh);ctx.lineTo(x+bw,y);ctx.closePath();ctx.globalAlpha=.8;ctx.fill();ctx.globalAlpha=1;ctx.stroke();}
+  if(hover!=null&&cur[hover]>.0015){const [x,y]=pts[hover],hh=cur[hover]*pr.Hz;ctx.strokeStyle=tbmResolve(cv,'var(--text)');ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x-bw-1,y);ctx.lineTo(x,y-hh-1);ctx.lineTo(x+bw+1,y);ctx.stroke();}
+  ctx.font='600 11px '+tbmCss(cv,'--font-sans');ctx.textAlign='center';
+  cur.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).slice(0,3).forEach(([v,i])=>{if(v<.02)return;const [x,y0]=pts[i],y=y0-v*pr.Hz-6;ctx.lineWidth=3;ctx.strokeStyle=tbmResolve(cv,'var(--surface)');ctx.strokeText(spikes.names[i],x,y);ctx.fillStyle=tbmResolve(cv,'var(--text)');ctx.fillText(spikes.names[i],x,y);});
+  frame.current={pts,order,pr};
+ },[w,cur,orbit.view,hover,color,spikes,states,geo]);
+ const move=e=>{const f=frame.current;if(!f||orbit.dragging()){setTip(null);return;}const r=canvas.current.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;let best=null,bd=9;
+  for(const i of f.order){const [x,y]=f.pts[i],hh=cur[i]*f.pr.Hz;const d=(py>=y-hh&&py<=y+2)?Math.abs(px-x):Math.hypot(px-x,py-(py<y-hh?y-hh:y));if(d<=bd){bd=d;best=i;}}
+  setHover(best);setTip(best==null?null:{i:best,x:e.clientX,y:e.clientY});};
+ const top=React.useMemo(()=>{let t=-1;values.forEach((v,i)=>{if(t<0||v>values[t])t=i;});const sum=values.reduce((a,b)=>a+b,0);return t<0?null:{name:spikes.names[t],v:values[t],share:sum>0?values[t]/sum:null};},[values,spikes]);
+ return hs('div',{className:'tbm-card',children:[
+  hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Espigões por município'}),h('p',{children:'Altura proporcional aos emplacamentos de cada município, '+channelLabel+'.'})]}),
+   h('div',{className:'tbm-seg',role:'group','aria-label':'Medida dos espigões',children:[['market','Mercado'],['mit','Mitsubishi']].map(([v,l])=>h('button',{type:'button','aria-pressed':color===v,onClick:()=>setColor(v),children:l},v))})]}),
+  h(OrbitControls,{orbit,home}),
+  h('div',{ref:wrap,className:'tbm-canvas',children:h('canvas',{ref:canvas,role:'img','aria-label':'Mapa de espigões dos municípios brasileiros',...orbit.handlers,onMouseMove:move,onMouseLeave:()=>{setHover(null);setTip(null);}})}),
+  top&&hs('p',{className:'tbm-callout',children:[h('b',{children:'Maior espigão: '}),top.name+' com '+tbmInt(top.v)+' emplacamentos, '+tbmPct(top.share)+' do total'+(color==='mit'?' da Mitsubishi':'')+'.']}),
+  tip&&hs('div',{className:'tbm-tip',style:{left:tip.x+14,top:tip.y+14},children:[h('strong',{children:spikes.names[tip.i]}),hs('div',{className:'tbm-tip-row',children:[h('span',{children:'Mercado'}),h('span',{children:tbmInt(spikes.market[tip.i])})]}),hs('div',{className:'tbm-tip-row',children:[h('span',{children:'Mitsubishi'}),h('span',{children:tbmInt(spikes.mit[tip.i])})]})]})]});
+}
+
+/* ---------- 3. states in 3D ---------- */
+function ExtrudedStates({states,geo,tops,ufTotals,population,channelLabel}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
+ const wrap=React.useRef(null),canvas=React.useRef(null),w=useCanvasWidth(wrap);
+ const home={yaw:0,tilt:50,minT:20,maxT:80},orbit=useOrbit(home);
+ const [metric,setMetric]=React.useState('volume'),[hover,setHover]=React.useState(null),[tip,setTip]=React.useState(null);
+ const pop=React.useMemo(()=>new Map((population?.states??[]).map(s=>[s.name,s.population2026])),[population]);
+ const raw=React.useMemo(()=>states.map(s=>{const v=ufTotals.get(s.uf)??0;return metric==='volume'?v:(pop.get(s.uf)>0?v/pop.get(s.uf)*1000:0);}),[states,ufTotals,metric,pop]);
+ const target=React.useMemo(()=>{const max=Math.max(1e-9,...raw);return raw.map(v=>v/max);},[raw]);
+ const cur=useTweened(target),frame=React.useRef(null);
+ React.useEffect(()=>{const cv=canvas.current;if(!cv||!w||!cur)return;const dpr=Math.min(devicePixelRatio||1,2),pr=tbmProjection(orbit.view,geo,w,Math.min(170,w*.2));
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(pr.H*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(pr.H*dpr);cv.style.height=pr.H+'px';}
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,pr.H);const surf=tbmResolve(cv,'var(--surface)');
+  const cen=states.map(s=>pr.P(s.cx,s.cy)),order=states.map((s,i)=>i).sort((a,b)=>cen[a][1]-cen[b][1]),drawn=[];
+  for(const i of order){const s=states[i],hh=(cur[i]||0)*pr.Hz,lead=tops?.get(s.uf)?.top?.[0]?.b,base=tbmResolve(cv,lead?tbmColor(lead):'var(--tbm-other)'),side=tbmShade(base,.62),step=Math.max(1,hh/40);
+   for(let z=0;z<hh;z+=step){ctx.setTransform(...pr.mat(dpr,z));ctx.fillStyle=side;ctx.fill(s.p);}
+   ctx.setTransform(...pr.mat(dpr,hh));ctx.fillStyle=hover===i?tbmShade(base,1.12):base;ctx.fill(s.p);ctx.strokeStyle=surf;ctx.lineWidth=1/pr.s;ctx.stroke(s.p);drawn.push([i,hh]);}
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.font='600 11px '+tbmCss(cv,'--font-sans');ctx.textAlign='center';
+  target.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).slice(0,4).forEach(([v,i])=>{const hh=(cur[i]||0)*pr.Hz,[x,y0]=cen[i],t=states[i].uf+' '+(metric==='volume'?tbmInt(raw[i]):raw[i].toLocaleString('pt-BR',{maximumFractionDigits:1}));ctx.lineWidth=3;ctx.strokeStyle=surf;ctx.strokeText(t,x,y0-hh-6);ctx.fillStyle=tbmResolve(cv,'var(--text)');ctx.fillText(t,x,y0-hh-6);});
+  frame.current={pr,drawn};
+ },[w,cur,orbit.view,hover,metric,states,geo,tops]);
+ const move=e=>{const f=frame.current;if(!f||orbit.dragging()){setTip(null);return;}const r=canvas.current.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,ctx=canvas.current.getContext('2d');let hit=null;
+  for(let k=f.drawn.length-1;k>=0;k--){const [i,hh]=f.drawn[k];ctx.setTransform(...f.pr.mat(1,hh));if(ctx.isPointInPath(states[i].p,px,py)){hit=i;break;}}
+  ctx.setTransform(1,0,0,1,0,0);setHover(hit);setTip(hit==null?null:{i:hit,x:e.clientX,y:e.clientY});};
+ return hs('div',{className:'tbm-card',children:[
+  hs('div',{className:'tbm-card-head',children:[hs('div',{children:[h('h3',{children:'Brasil em 3D'}),h('p',{children:'Altura pela medida escolhida, '+channelLabel+'; o topo tem a cor da marca líder do estado.'})]}),
+   h('div',{className:'tbm-seg',role:'group','aria-label':'Medida da altura',children:[['volume','Volume'],['per1000','Por mil habitantes']].map(([v,l])=>h('button',{type:'button','aria-pressed':metric===v,onClick:()=>setMetric(v),children:l},v))})]}),
+  h(OrbitControls,{orbit,home}),
+  h('div',{ref:wrap,className:'tbm-canvas',children:h('canvas',{ref:canvas,role:'img','aria-label':'Estados extrudados em 3D',...orbit.handlers,onMouseMove:move,onMouseLeave:()=>{setHover(null);setTip(null);}})}),
+  h('p',{className:'tbm-note',children:'População: estimativa oficial do IBGE para 2026. “Por mil habitantes” mostra onde os carros são emplacados, não onde moram os compradores.'}),
+  tip&&hs('div',{className:'tbm-tip',style:{left:tip.x+14,top:tip.y+14},children:[h('strong',{children:TBM_UF_NAMES[states[tip.i].uf]}),hs('div',{className:'tbm-tip-row',children:[h('span',{children:'Emplacamentos'}),h('span',{children:tbmInt(ufTotals.get(states[tip.i].uf))})]}),hs('div',{className:'tbm-tip-row',children:[h('span',{children:'Por mil habitantes'}),h('span',{children:pop.get(states[tip.i].uf)>0?((ufTotals.get(states[tip.i].uf)??0)/pop.get(states[tip.i].uf)*1000).toLocaleString('pt-BR',{maximumFractionDigits:1}):'—'})]}),tops?.get(states[tip.i].uf)?.top?.[0]&&hs('div',{className:'tbm-tip-row tbm-muted',children:[h('span',{children:'Marca líder'}),h('span',{children:tbmName(tops.get(states[tip.i].uf).top[0].b)})]})]})]});
+}
+
+function TerritoryBrandMaps({filters,manifest,base}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
+ const [channel,setChannel]=React.useState('VAREJO');
+ const local=React.useMemo(()=>({...filters,uf:'all',municipio:'all',tipo_venda:channel}),[canonicalFilterKey(filters),channel]);
+ const market=useMarketData(local,true,'primary-map',false),model=market.result;
+ const explore=useExploration({type:'explore',filters:local,xDimension:'uf',seriesDimension:'marca',topN:20,xTopN:50,order:'value_desc',includeOthers:true,highlightBrands:[]},manifest,base);
+ const points=useTbmPoints(base),population=useCatalogPopulation(base);
+ const states=React.useMemo(tbmStates,[]),geo=React.useMemo(()=>tbmGeometry(states),[states]);
+ const tops=React.useMemo(()=>tbmTops(explore.result),[explore.result]);
+ const ufTotals=React.useMemo(()=>new Map((model?.groups?.uf??[]).map(r=>[r.name,r.count??0])),[model]);
+ // Join municipal aggregates ("NOME · UF") to national points by normalized name + UF.
+ const spikes=React.useMemo(()=>{if(!points.data||!model)return null;const key=(n,uf)=>catalogMapNormalize(n)+'|'+uf;
+  const split=rows=>{const m=new Map();for(const r of rows??[]){const i=String(r.name).lastIndexOf(' · ');if(i<0)continue;m.set(key(r.name.slice(0,i),r.name.slice(i+3)),r.count??0);}return m;};
+  const mk=split(model.groups?.municipio),mit=split(model.catalog?.mitsubishi?.groups?.municipio);
+  const rows=points.data.rows;return {points:rows.map(r=>[r[3],r[4]]),names:rows.map(r=>r[1]+' · '+r[2]),market:rows.map(r=>mk.get(key(r[1],r[2]))??0),mit:rows.map(r=>mit.get(key(r[1],r[2]))??0)};},[points.data,model]);
+ const channelLabel=channel==='VAREJO'?'no varejo':'em todos os canais';
+ const loading=market.pending||explore.pending;
+ return hs('section',{className:'tbm',id:'territory-brand-maps','aria-labelledby':'tbm-title',children:[
+  hs('div',{className:'tbm-head',children:[
+   hs('div',{children:[h('h2',{id:'tbm-title',children:'Marcas no território'}),h('p',{children:'Mesmos filtros do painel, em visão nacional. Canal próprio desta seção.'})]}),
+   hs('div',{className:'tbm-channel',children:[h('span',{children:'Canal'}),h('div',{className:'tbm-seg',role:'group','aria-label':'Canal de venda',children:[['VAREJO','Varejo'],['all','Todos os canais']].map(([v,l])=>h('button',{type:'button','aria-pressed':channel===v,onClick:()=>setChannel(v),children:l},v))})]})]}),
+  channel==='all'&&h('p',{className:'tbm-warn',children:'Todos os canais inclui locadoras e frotas, que emplacam na sede da empresa. Belo Horizonte e Curitiba aparecem muito maiores do que a demanda das lojas.'}),
+  (market.error||explore.error||points.error)&&h('p',{role:'alert',className:'tbm-warn',children:market.error||explore.error||points.error}),
+  loading&&!tops&&h('p',{role:'status',className:'tbm-status',children:'Calculando marcas por estado…'}),
+  tops&&h(TopThreeMap,{tops,states}),
+  spikes&&h(SpikeMap,{spikes,states,geo,channelLabel}),
+  tops&&model&&h(ExtrudedStates,{states,geo,tops,ufTotals,population:population.data,channelLabel})]});
+}
+
+if(typeof module!=='undefined'&&module.exports)module.exports={tbmTops,tbmGeometry,tbmProjection,tbmName,tbmColor};
