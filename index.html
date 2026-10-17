@@ -1228,7 +1228,7 @@ function brandColor(name) {
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = {brandColor, brandColorKnown, brandColorKey, BRAND_COLOR_SLOTS};
 
-/* One theme, three accent colors, plus a dark presentation mode.
+/* One theme, five accent colors, plus a dark presentation mode.
    Replaces the 14-theme catalog. Embedded in place of the old catalog block and
    called as installThemeRegistry(T5, C5) before the runtime's first theme use.
    `original` stays the default and carries no tokens: the runtime paints it from
@@ -1252,6 +1252,16 @@ var THEME_SURFACES = {
   marinho: {label: 'Azul marinho',
     light: ['#f4f6fa', '#ffffff', '#ffffff', '#edf1f7', '#ffffff', '#e8edf5', '#0f1a2e', '#56637a', '#dfe4ee', '#c9d1e0', '#1b3a6b', '#12805c', '#c2410c'],
     dark: ['#0a1020', '#111a2e', '#16213a', '#16213a', '#16213a', '#1d2a47', '#e6ecf7', '#9aa8c2', '#22304a', '#31415f', '#7ea6e8', '#4cc79a', '#f59e5b']},
+  // Terra and Oliva e ouro come from the owner's Marrom and Verde palettes (#4A2718, #7A4E47, #B98E61, #CDB0A1;
+  // #31401A, #BF9A54, #FFFFEA, #261D12). They paint the interface only: charts keep THEME_CHARTS, which is
+  // validated for color-vision deficiency (the brown and green swatches fail that check as chart series),
+  // and red stays exclusive to Mitsubishi.
+  terra: {label: 'Terra',
+    light: ['#f7f2ec', '#fffcf8', '#fffcf8', '#f0e7de', '#fffcf8', '#ebe0d5', '#2b1710', '#6b4f44', '#e5d9cd', '#d0bfae', '#7a4e47', '#2f7a4f', '#b8450c'],
+    dark: ['#1a110c', '#251a14', '#2d211a', '#2d211a', '#2d211a', '#382a21', '#f3e9df', '#bba797', '#3a2b22', '#4d3a2e', '#b98e61', '#5fcf98', '#f59e5b']},
+  ouro: {label: 'Oliva e ouro',
+    light: ['#f8f7ea', '#fffff5', '#fffff5', '#efeedc', '#fffff5', '#e8e7d2', '#261d12', '#5b5a40', '#e3e1c8', '#cbc8a8', '#31401a', '#2f7d4a', '#b8450c'],
+    dark: ['#15120a', '#1e1a10', '#272216', '#272216', '#272216', '#322c1c', '#f5f2de', '#b7b595', '#363120', '#4a4430', '#bf9a54', '#6fd19a', '#f59e5b']},
   apresentacao: {label: 'Apresentação (escuro)', darkOnly: true,
     dark: ['#0e1116', '#151a21', '#1b212a', '#1b212a', '#1b212a', '#232b36', '#e6edf3', '#8b96a5', '#252d38', '#34404e', '#3fc7d9', '#3fb98a', '#ffa657']}
 };

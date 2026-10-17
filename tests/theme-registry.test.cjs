@@ -10,10 +10,10 @@ const document = {documentElement: root, querySelector: () => null};
 const registrySource = html.slice(html.indexOf('var C5='), html.indexOf('var k5='));
 const api = new Function('document', 'getComputedStyle', registrySource + ';return {C5,T5,O5,E5};')(document, () => ({getPropertyValue: () => ''}));
 
-assert.deepEqual(api.T5.map(t => t.id), ['original', 'petroleo', 'oliva', 'marinho', 'apresentacao'], 'one theme, three accents, one presentation mode');
+assert.deepEqual(api.T5.map(t => t.id), ['original', 'petroleo', 'oliva', 'marinho', 'terra', 'ouro', 'apresentacao'], 'one theme, five accents, one presentation mode');
 assert.equal(api.T5[0].tokens, undefined, 'original is painted from CSS');
 themeAPI.installThemeRegistry(api.T5, api.C5);
-assert.equal(api.T5.length, 5, 'idempotent');
+assert.equal(api.T5.length, 7, 'idempotent');
 
 // Removed theme ids stored in a browser fall back instead of crashing.
 for (const legacy of ['liquid-blue', 'windows-95', 'sage', 'codex-classic']) {
@@ -45,8 +45,16 @@ for (const [id, t] of Object.entries(themeAPI.THEME_SURFACES)) {
     assert(contrast(s[10], s[1]) >= 3, id + ' accent on surface');
     assert(contrast(s[6], s[0]) >= 7, id + ' text on background');
     assert(contrast(s[7], s[1]) >= 4.5, id + ' secondary text on surface');
+    assert(contrast(s[11], s[1]) >= 4.5 && contrast(s[12], s[1]) >= 4.5, id + ' positive/negative readable');
+    assert(contrast(s[0], s[1]) < 1.2 && contrast(s[9], s[1]) >= 1.4, id + ' border visible on surface');
   }
 }
+
+// The two palette themes keep the owner's swatches as accents and never use red (reserved for Mitsubishi).
+const redHue = hex => { const [r, g, b] = hex.slice(1).match(/../g).map(x => parseInt(x, 16)); return r > 150 && r > g * 2.2 && r > b * 2.2; };
+for (const id of ['terra', 'ouro']) for (const s of [themeAPI.THEME_SURFACES[id].light, themeAPI.THEME_SURFACES[id].dark]) assert(!redHue(s[10]), id + ' no red accent');
+assert.equal(themeAPI.THEME_SURFACES.terra.light[10], '#7a4e47');assert.equal(themeAPI.THEME_SURFACES.ouro.light[10], '#31401a');assert.equal(themeAPI.THEME_SURFACES.ouro.dark[10], '#bf9a54');
+api.O5('terra', 'light');assert.equal(root.dataset.appTheme, 'terra');api.O5('ouro', 'dark');assert.equal(values.get('--accent'), '#bf9a54');
 
 // Runtime patches and the design-system layer are in place.
 assert(html.includes('if(!n)n=T5[0];'));
@@ -57,4 +65,4 @@ assert(!html.includes('<style id="catalog-themes-styles">') && !html.includes('<
 const lastStyle = [...html.matchAll(/<style id="([^"]+)">/g)].pop()[1];
 assert.equal(lastStyle, 'design-system-styles', 'design system is the last stylesheet');
 assert(fs.existsSync('assets/fonts/Geist-Variable.woff2'));
-console.log('theme registry: 5 entries, fallbacks, palette, contrast and runtime patches verified');
+console.log('theme registry: 7 entries, fallbacks, palette, contrast and runtime patches verified');
