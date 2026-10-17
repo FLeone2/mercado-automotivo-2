@@ -588,6 +588,22 @@
 @media(prefers-reduced-motion:reduce){.tbm-card,.tbm-fade{animation:none}.tbm-stack span,.tbm-state{transition:none}}
 
 </style>
+<style id="overview-insights-styles">
+/* "O que mudou" card at the top of Panorama. */
+.oi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:0 0 16px;display:flex;flex-direction:column;gap:10px;animation:ds-settle .28s var(--ds-ease,ease) both}
+.oi-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.oi-head h2{margin:0;font-size:17px;font-weight:650}
+.oi-head span{font-size:12px;color:var(--secondary)}
+.oi-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px}
+@media(max-width:820px){.oi-list{grid-template-columns:minmax(0,1fr)}}
+.oi-item{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5;min-width:0}
+.oi-icon{flex:none;width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:var(--muted);color:var(--secondary)}
+.oi-up .oi-icon{color:var(--positive);background:color-mix(in srgb,var(--positive) 12%,var(--surface))}
+.oi-down .oi-icon{color:var(--negative);background:color-mix(in srgb,var(--negative) 12%,var(--surface))}
+.oi-brand .oi-icon{color:var(--mitsubishi-color);background:color-mix(in srgb,var(--mitsubishi-color) 12%,var(--surface))}
+@media(prefers-reduced-motion:reduce){.oi-card{animation:none}}
+
+</style>
 <style id="design-system-styles">
 /* Design system: the single visual layer for the whole dashboard.
    Loaded after every other stylesheet. Tokens for the default theme (`original`
@@ -4699,6 +4715,55 @@ function TerritoryBrandMaps({filters,manifest,base}){
 if(typeof module!=='undefined'&&module.exports)module.exports={tbmTops,tbmGeometry,tbmProjection,tbmName,tbmColor};
 
 // END TERRITORY BRAND MAPS
+// BEGIN OVERVIEW INSIGHTS
+/* "O que mudou": the Panorama opens with plain sentences computed from the same
+   model as its KPI cards (selected period vs the previous period of equal length,
+   and the total vs the same period a year earlier). No sentence is shown when its
+   comparison is unavailable; shares use the full filtered market as denominator. */
+const INSIGHT_NAMES={FIAT:'Fiat',VW:'VW',GM:'GM',BYD:'BYD',TOYOTA:'Toyota',HYUNDAI:'Hyundai',RENAULT:'Renault',JEEP:'Jeep',HONDA:'Honda',NISSAN:'Nissan',GWM:'GWM',GEELY:'Geely',FORD:'Ford',CITROEN:'Citroën',PEUGEOT:'Peugeot','CAOA CHERY':'Caoa Chery',MITSUBISHI:'Mitsubishi'};
+const insightName=b=>INSIGHT_NAMES[b]??(String(b).charAt(0)+String(b).slice(1).toLowerCase());
+const insightInt=n=>Math.round(n).toLocaleString('pt-BR');
+const insightPct=(x,d=1)=>(x*100).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%';
+const insightSigned=(x,d=1)=>(x>0?'+':x<0?'−':'')+insightPct(Math.abs(x),d);
+const insightPP=x=>(x>0?'+':x<0?'−':'')+Math.abs(x*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' p.p.';
+
+function overviewInsights(model){
+ if(!model||!(model.total>0))return [];
+ const brands=(model.groups?.marca??[]).filter(r=>Number.isFinite(r.count)&&r.count>0).sort((a,b)=>b.count-a.count);
+ const out=[];
+ const parts=[];
+ if(Number.isFinite(model.changeRate))parts.push(insightSigned(model.changeRate)+' sobre o período anterior');
+ if(Number.isFinite(model.yearChangeRate))parts.push(insightSigned(model.yearChangeRate)+' sobre o mesmo período do ano anterior');
+ out.push({id:'total',tone:Number.isFinite(model.yearChangeRate)?(model.yearChangeRate>=0?'up':'down'):Number.isFinite(model.changeRate)?(model.changeRate>=0?'up':'down'):'neutral',
+  text:insightInt(model.total)+' emplacamentos no recorte'+(parts.length?', '+parts.join(' e '):'')+'.'});
+ if(brands.length){
+  const lead=brands[0],second=brands[1];
+  out.push({id:'leader',tone:'neutral',text:insightName(lead.name)+' lidera com '+insightPct(lead.count/model.total)+' do mercado'+(second?', '+insightPP((lead.count-second.count)/model.total).replace('+','')+' à frente de '+insightName(second.name):'')+'.'});
+  const top3=brands.slice(0,3).reduce((s,r)=>s+r.count,0)/model.total;
+  out.push({id:'concentration',tone:'neutral',text:'As três maiores marcas somam '+insightPct(top3)+' dos emplacamentos.'});
+  // Share movement among brands with enough volume to matter (≥0,5% of the market).
+  const movers=brands.filter(r=>Number.isFinite(r.shareChange)&&r.count/model.total>=.005);
+  const gain=movers.reduce((a,r)=>!a||r.shareChange>a.shareChange?r:a,null),loss=movers.reduce((a,r)=>!a||r.shareChange<a.shareChange?r:a,null);
+  if(gain&&gain.shareChange>=.0005)out.push({id:'gain',tone:'up',text:insightName(gain.name)+' foi quem mais ganhou participação: '+insightPP(gain.shareChange)+' sobre o período anterior, para '+insightPct(gain.count/model.total)+'.'});
+  if(loss&&loss.shareChange<=-.0005&&loss!==gain)out.push({id:'loss',tone:'down',text:insightName(loss.name)+' foi quem mais perdeu participação: '+insightPP(loss.shareChange)+', para '+insightPct(loss.count/model.total)+'.'});
+  const mitIndex=brands.findIndex(r=>r.name==='MITSUBISHI');
+  if(mitIndex>=0){const m=brands[mitIndex];out.push({id:'mitsubishi',tone:'brand',text:'Mitsubishi: '+insightInt(m.count)+' emplacamentos, '+insightPct(m.count/model.total,2)+' do mercado, '+(mitIndex+1)+'ª marca'+(Number.isFinite(m.changeRate)?', '+insightSigned(m.changeRate)+' sobre o período anterior':'')+'.'});}
+ }
+ return out;
+}
+
+function OverviewInsights({model,period}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs;
+ const items=React.useMemo(()=>overviewInsights(model),[model]);
+ if(!items.length)return null;
+ const icon={up:'↑',down:'↓',brand:'◆',neutral:'•'};
+ return hs('section',{className:'oi-card','aria-labelledby':'oi-title',children:[
+  hs('div',{className:'oi-head',children:[h('h2',{id:'oi-title',children:'O que mudou'}),period&&h('span',{children:period})]}),
+  h('ul',{className:'oi-list',children:items.map(item=>hs('li',{className:'oi-item oi-'+item.tone,children:[h('span',{className:'oi-icon','aria-hidden':true,children:icon[item.tone]}),h('span',{children:item.text})]},item.id))})]});
+}
+if(typeof module!=='undefined'&&module.exports)module.exports={overviewInsights};
+
+// END OVERVIEW INSIGHTS
 function useMarketData(filters,enabled,mode,reportBusy=true){const shell=dataApp.useDataApp();const [manifest,setManifest]=React.useState(null),[manifestError,setManifestError]=React.useState(null),[state,setState]=React.useState({result:null,pending:true,progress:null,error:null,key:null});const worker=React.useRef(null),sequence=React.useRef(0),activeRequest=React.useRef(null);
  const includeInteractive=mode==='interactive';
  const signature=canonicalFilterKey(filters),includeCatalog=['catalog','primary-map'].includes(mode),includeMarketBaseline=['technology','origin'].includes(mode),includeHistoryComparisons=mode==='history',includeChannelReference=['geography','primary-map'].includes(mode),includeOriginAnalysis=mode==='origin',includeMitsubishiProfile=['competition','ranking','segments'].includes(mode),base=getBase(shell.snapshot),requestKey=React.useMemo(()=>({includeInteractive,manifest,signature,base,includeMarketBaseline,includeHistoryComparisons,includeChannelReference,includeOriginAnalysis,includeMitsubishiProfile,includeCatalog}),[includeInteractive,manifest,signature,base,includeMarketBaseline,includeHistoryComparisons,includeChannelReference,includeOriginAnalysis,includeMitsubishiProfile,includeCatalog]);
@@ -4751,7 +4816,7 @@ function DashboardContent(){
  const overviewUFs=categoricalSelection(globalFilters.uf),overviewUF=overviewUFs.length===1?overviewUFs[0]:null;
  const overviewHasGeography=hasFilterSelection(globalFilters.uf,'uf')||hasFilterSelection(globalFilters.municipio,'municipio');
  const overviewMapFilters={...effectiveFilters,uf:'all',municipio:'all'};
- const overviewMapQuery=useMarketData(overviewMapFilters,['dashboard','geography'].includes(tab)&&mapReady,'primary-map',false);
+ const overviewMapQuery=useMarketData(overviewMapFilters,tab==='geography'&&mapReady,'primary-map',false);
  const {manifest,result:model,pending,progress,error,manifestError,requestKey,key:resultKey}=useMarketData(effectiveFilters,marketEnabled,tab);
  const overviewMapModel=overviewMapQuery.result;
  const overviewMapScope=activeFilterEntries(overviewMapFilters).map(([field,value])=>({field,label:LABELS$1[field]??field,value:Array.isArray(value)?value.join(', '):value}));
@@ -4774,13 +4839,14 @@ function DashboardContent(){
   jsxRuntime.jsx(MarketHeader,navigationProps)
   , jsxRuntime.jsx(MarketSubnavigation,navigationProps)
   , tab!=='quality'&&jsxRuntime.jsx(MarketFilterBar, { definitions: activeDefinitions, queries: liveQueries, values: effectiveFilters, onChange: changeFilter, periodDateChoices: liveChoices.map(r=>r.date).filter(Boolean), singleSelection: tab==='geography', mapWarning: tab==='geography'?jsxRuntime.jsxs('div', { className: "am-map-context-banner", children: [jsxRuntime.jsx('p', { children: "O mapa usa uma opção por filtro em um recorte próprio. As seleções múltiplas das outras abas continuam guardadas. Alterar a UF limpa o município deste mapa; escolhas múltiplas pendentes ainda exigem confirmação."                                }), jsxRuntime.jsx('button', { className: "am-small-button", onClick: ()=>setMapContext(createMapContext(globalFilters)), children: "Usar filtros das outras abas"    })]}):null, children: jsxRuntime.jsx(PeriodShortcuts, { manifest: manifest, value: effectiveFilters.date, onChange: value=>{setFilter('date',value);if(tab==='dashboard'&&listMonths(rangeFrom(value,manifest)).length>2)setGrain('monthly');},})})
-  , ['dashboard','geography'].includes(tab)&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending,error:overviewMapQuery.error,ready:Boolean(overviewMapModel),compatibilityKey:JSON.stringify(['independent-primary-map',tab,effectiveFilters.uf]),label:performanceFilterLabel(overviewMapFilters),children:jsxRuntime.jsx(PrimaryMap,{...(tab==='dashboard'?{id:'overview-map'}:{id:'territories-primary-map'}),model:overviewMapModel,filters:effectiveFilters,scope:overviewMapScope,dataBase:getBase(snapshot),setFilter:setPrimaryMapFilter,view:tab==='geography'?mapView:overviewMapView,setView:tab==='geography'?setMapView:setOverviewMapView,pending:overviewMapQuery.pending,error:overviewMapQuery.error})})
+  , tab==='geography'&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending,error:overviewMapQuery.error,ready:Boolean(overviewMapModel),compatibilityKey:JSON.stringify(['independent-primary-map',tab,effectiveFilters.uf]),label:performanceFilterLabel(overviewMapFilters),children:jsxRuntime.jsx(PrimaryMap,{...(tab==='dashboard'?{id:'overview-map'}:{id:'territories-primary-map'}),model:overviewMapModel,filters:effectiveFilters,scope:overviewMapScope,dataBase:getBase(snapshot),setFilter:setPrimaryMapFilter,view:tab==='geography'?mapView:overviewMapView,setView:tab==='geography'?setMapView:setOverviewMapView,pending:overviewMapQuery.pending,error:overviewMapQuery.error})})
    , tab==='geography'&&mapReady&&jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})
   , ['explore','structure'].includes(tab)?jsxRuntime.jsx(ExplorationView, { forcedView:tab==='structure'?'structure':null, onRankingRestore:setRankingControls, favoriteDefinitions: activeDefinitions, favoriteChoiceRows: liveChoices, manifest: manifest, manifestError: manifestError, filters: effectiveFilters, scope: scope, base: getBase(snapshot), highlightMitsubishi: highlightMitsubishi, onHighlightMitsubishi: setHighlightMitsubishi,}):tab==='models'?jsxRuntime.jsx(ScenarioWorkspace, { activeManifest: manifest, activeManifestVerified: Boolean(manifest)&&!manifestError, filters: effectiveFilters, scope: scope, base: getBase(snapshot), highlightMitsubishi: highlightMitsubishi, onHighlightMitsubishi: setHighlightMitsubishi,}):tab==='quality'?jsxRuntime.jsx(QualityView, { manifest: manifest,}):jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
    mixedScope&&jsxRuntime.jsxs('div', { className: "am-scope-alert", children: [jsxRuntime.jsx('span', { children: "!"}), jsxRuntime.jsx('p', { children: "Os arquivos deste período têm conjuntos de segmentos diferentes. Selecione um segmento comum para comparar a série. O total geral reúne apenas os segmentos observados em cada arquivo."                           })]})
    , tab==='animations'?jsxRuntime.jsx(AnimationWorkspace,{manifest,filters:effectiveFilters,scope}):/* BEGIN MAIN CHART SNAPSHOT */jsxRuntime.jsx(PendingChartSnapshot,{pending,error,ready:mapReady&&Boolean(model),compatibilityKey:JSON.stringify([tab,evolutionView,mapView,overviewMapView,grain,manifest?.schemaVersion]),label:performanceFilterLabel(effectiveFilters),children:!mapReady?jsxRuntime.jsxs('div', { className: "am-map-pending", role: "status", children: [jsxRuntime.jsx('strong', { children: "Escolha uma opção para cada filtro do mapa"       }), jsxRuntime.jsxs('p', { children: ["Há múltiplas seleções nas outras abas: "      , (mapContext?.pending??[]).map(item=>(LABELS$1[item.field]??item.field)+': '+item.values.join(', ')).join(' · '), ". Selecione uma opção nos controles acima ou use Todos explicitamente."          ]}), jsxRuntime.jsx('button', { className: "am-small-button", onClick: ()=>setMapContext(acceptAllPending(mapContext??createMapContext(globalFilters))), children: "Usar Todos nesses filtros"   })]}):pending?jsxRuntime.jsxs('div', { className: "am-loading", role: "status", children: [jsxRuntime.jsx('span', { className: "am-spinner",}), jsxRuntime.jsx('strong', { children: "Preparando o recorte"  }), jsxRuntime.jsxs('span', { children: ["Consultando os meses do recorte e das comparações"       , progress?` · ${progress.done} de ${progress.total}`:'', "."]}), jsxRuntime.jsx('p', { children: "Os totais aparecem quando todos os arquivos do recorte estiverem prontos."          }), manifest&&listMonths(rangeFrom(effectiveFilters.date,manifest)).length>12&&jsxRuntime.jsx('p', { children: "Consultas de vários anos podem levar alguns minutos e usar mais memória. Para explorar todo o histórico, prefira um computador e mantenha esta aba aberta. Você pode reduzir o período para acelerar."                               })]}):error?jsxRuntime.jsx(Empty, { title: "Recorte indisponível" , detail: error,}):!model?jsxRuntime.jsx(Empty, { title: "Base em preparação"  , detail: "Os arquivos revisados ainda não estão disponíveis neste ambiente."        ,}):model.total===null&&model.channelUnavailableMonths?.length&&tab!=='geography'?jsxRuntime.jsx(Empty, { title: "Canal VD/Varejo não informado neste período"     , detail: "Os arquivos estão presentes, mas não informam o canal selecionado. O volume permanece indisponível, não zero. Selecione janeiro de 2018 em diante ou remova o filtro de canal."                           ,}):jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
     model.observationClipped&&jsxRuntime.jsxs('div', { className: "am-scope-alert", children: [jsxRuntime.jsx('span', { children: "i"}), jsxRuntime.jsxs('p', { children: ["Dados observados até "   , dateLabel(model.range.end), ". A análise e a comparação usam somente esse intervalo; os dias seguintes não são tratados como zero."                 ]})]}), model.channelUnavailableMonths?.length>0&&jsxRuntime.jsxs('div', { className: "am-scope-alert", role: "status", children: [jsxRuntime.jsx('span', { children: "!"}), jsxRuntime.jsxs('p', { children: [jsxRuntime.jsxs('strong', { children: ["Canal VD/Varejo indisponível em "    , model.channelUnavailableMonths.length, " mês(es)." ]}), " A fonte desses meses não informa o canal. Os pontos permanecem como lacunas; o total é indisponível quando nenhum mês tem informação, ou parcial quando há meses conhecidos. Ausência de canal não é zero emplacamento."                                   ]})]}), (model.missingMonths.length+(model.incompleteMonths?.length??0)>0)&&jsxRuntime.jsxs('div', { className: "am-scope-alert", children: [jsxRuntime.jsx('span', { children: "!"}), jsxRuntime.jsxs('p', { children: ["Cobertura parcial: "  , model.missingMonths.length, " mês(es) ausente(s) e "    , model.incompleteMonths?.length??0, " com cobertura incompleta ou não declarada. O total reúne os registros observados; os intervalos sem cobertura confirmada e suas comparações permanecem indisponíveis."                      ]})]}), jsxRuntime.jsxs('div', { className: "am-period-line", children: [jsxRuntime.jsx('span', { children: titlePeriod}), jsxRuntime.jsxs('span', { children: [model.coverage.length, " " , model.coverage.length===1?'arquivo mensal':'arquivos mensais', " · "  , effectiveFilters.population==='light'?'Automóveis + comerciais leves':'Todo o conteúdo dos arquivos']})]})
     , tab==='dashboard'&&jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+     jsxRuntime.jsx(OverviewInsights,{model,period:titlePeriod}),
      jsxRuntime.jsxs('div',{className:'am-overview-summary',children:[jsxRuntime.jsx(dataApp.SortableRegion, { id: "market:overview:kpis", variant: "canvas", columns: 12, spacing: "standard", rows: [{id:'market:overview:kpi-row',kind:'metrics',items:metricItems.map(m=>'overview-'+m[0])}], children: metricItems.map(([id,title,value,detail,accent])=>jsxRuntime.jsx(dataApp.SortableItem, { id: 'overview-'+id, label: title, kind: "metric", span: 3, children: jsxRuntime.jsx(MarketMetric, { id: 'overview-'+id, title: title, value: value, detail: detail, rows: id==='brand'?groups.marca:summaryRows, scope: scope, accent: accent,})}, id))}),jsxRuntime.jsxs('div',{className:'am-overview-mitsubishi',children:[jsxRuntime.jsx('strong',{children:'◆ Mitsubishi'}),jsxRuntime.jsx('span',{children:(groups.marca??[]).find(r=>r.name==='MITSUBISHI')?number(groups.marca.find(r=>r.name==='MITSUBISHI').count)+' emplacamentos · '+percent(groups.marca.find(r=>r.name==='MITSUBISHI').marketShare)+' do recorte · '+signed(groups.marca.find(r=>r.name==='MITSUBISHI').changeRate)+' no período':'Sem registros no recorte observado'})]})]})
      , jsxRuntime.jsx(dataApp.Section, { id: "overview-market-heading", title: "Ritmo e composição do mercado"    , spacing: "after-metrics", children: jsxRuntime.jsxs('div', { className:'am-overview-visuals', children: [
       jsxRuntime.jsx('div', { className:'am-overview-trend', children: jsxRuntime.jsx(MarketChart, { id: "overview-trend", title: "Evolução dos emplacamentos"  , rows: timelineRows, spec: {type:'area',x:'date',y:'count',stackable:false}, height: 320, scope: scope, controls: jsxRuntime.jsx(dataApp.SegmentedControl, { value: grain, onChange: setGrain, options: [{value:'daily',label:'Diária'},{value:'monthly',label:'Mensal'},{value:'annual',label:'Anual'}], compact: true,}),})})
