@@ -24,3 +24,14 @@ async function query(filters){const {port,messages}=makePort();await port.onmess
  let releaseCancel,startCancel;const cancelStarted=new Promise(r=>startCancel=r),cancelHeld=new Promise(r=>releaseCancel=r);const cancel=makePort(loader(async meta=>{startCancel();await cancelHeld;return read(meta);}));const pending=cancel.port.onmessage(request(20,{}));await cancelStarted;await cancel.port.onmessage({data:{type:'cancel',releaseCubes:true}});releaseCancel();await pending;assert(!cancel.messages.some(m=>m.id===20&&(m.result||m.error)),'Canceled query must not publish terminal response');
  console.log('PASS: embedded interactive worker on September 2025/2026 real sources; national 268721, Mitsubishi 1729; four exact weighted compositions, local brush summaries, common September annual totals, replacement and cancellation.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+// Per-day composition (Explorar período · Dia): same totals as the monthly view, from real cubes.
+(async()=>{
+ const run=async filters=>{const {port,messages}=makePort();await port.onmessage({data:{...request(9,filters).data,includeDaily:true}});const response=messages.findLast(m=>m.result||m.error);assert(!response.error,response.error);return plain(response.result.interactive);};
+ const day=await run({date:'2026-09'}),month=await query({date:'2026-09'}),sum=rows=>rows.reduce((s,r)=>s+r.count,0);
+ assert.equal(day.daily.length,30);assert.equal(sum(day.daily),month.total);assert.equal(day.total,month.total);
+ for(const dim of ['bd_carroceria','bd_segmento','combustivel','marca'])assert.equal(sum(day.dailyGroups[dim]),month.total,dim);
+ assert.equal(month.daily,null,'daily data is requested explicitly');
+ const mit=await run({date:'2026-09',marca:['MITSUBISHI']});assert.equal(sum(mit.dailyGroups.marca),1729);
+ const pick=evolutionBrushSummary(day,'marca',['2026-09-01','2026-09-30'],'day');assert.equal(pick.total,month.total);assert.equal(pick.rows.find(r=>r.name==='MITSUBISHI').count,1729);
+ console.log('PASS: real-source daily composition matches monthly totals for every dimension and brand filter.');
+})().catch(e=>{console.error(e);process.exit(1);});

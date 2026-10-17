@@ -9,4 +9,17 @@ let state=[],cursor=0,refs=[],rc=0;const jsx=(type,props)=>({type,props}),contex
 let nodes=render(),button=text=>nodes.find(n=>n.type==='button'&&n.props.children===text);assert.equal(button('Selecionar faixa').props['aria-pressed'],false);button('Selecionar faixa').props.onClick();nodes=render();assert(button('Desativar seleção').props['aria-pressed']);
 const svg=nodes.find(n=>n.type==='svg'),target={getBoundingClientRect:()=>({left:0,width:840}),setPointerCapture(){},hasPointerCapture(){return false;}};svg.props.onPointerDown({clientX:770,currentTarget:target,target:{dataset:{}},preventDefault(){},pointerId:1});svg.props.onPointerMove({clientX:61,currentTarget:target});svg.props.onPointerUp({currentTarget:target,pointerId:1});nodes=render();assert.deepEqual(Array.from(state[0]),['2025-12','2026-02']);assert.equal(nodes.find(n=>n.type==='svg').props.viewBox,'0 0 840 210','Timeline does not shrink with selection');
 const handles=nodes.filter(n=>n.props?.role==='slider');handles[0].props.onKeyDown({key:'ArrowRight',preventDefault(){}});nodes=render();assert.deepEqual(Array.from(state[0]),['2026-01','2026-02']);button('Limpar faixa').props.onClick();nodes=render();assert.equal(state[0],null);assert(button('Limpar faixa').props.disabled);
-assert(!source.includes('setFilter('));assert(!source.includes('history.pushState'));assert(source.includes('setPointerCapture'));assert(source.includes('onPointerCancel'));assert(source.includes("type:'month'"));console.log('PASS: weighted interval shares, missing/empty/crossover periods, month snapping, pointer/keyboard handles, clear/reset, stable timeline and no global mutation.');
+assert(!source.includes('setFilter('));assert(!source.includes('history.pushState'));assert(source.includes('setPointerCapture'));assert(source.includes('onPointerCancel'));assert(source.includes("'number':'month'"));console.log('PASS: weighted interval shares, missing/empty/crossover periods, month snapping, pointer/keyboard handles, clear/reset, stable timeline and no global mutation.');
+
+{const {evolutionBrushSeries:series}=require('../src/evolution-brush.js');
+ const snap={monthly:['2025-11','2025-12','2026-01','2026-02'].map((m,i)=>({date:m+'-01',count:[5,5,20,30][i],complete:true})),
+  monthlyGroups:{marca:['2025-11','2025-12','2026-01','2026-02'].flatMap((m,i)=>[{date:m+'-01',name:'A',count:[5,5,20,30][i]/2},{date:m+'-01',name:'B',count:[5,5,20,30][i]/2}])},
+  daily:[{date:'2026-01-30',count:1,complete:true},{date:'2026-01-31',count:2,complete:true},{date:'2026-02-01',count:3,complete:true}],
+  dailyGroups:{marca:[{date:'2026-01-30',name:'A',count:1},{date:'2026-01-31',name:'B',count:2},{date:'2026-02-01',name:'A',count:3}]}};
+ assert.deepEqual(series(snap,'year').map(p=>[p.key,p.label,p.count]),[['2025','2025 · nov–dez',10],['2026','2026 · jan–fev',50]]);
+ const y=summary(snap,'marca',['2026','2026'],'year');assert.equal(y.total,50);assert.equal(y.rows.length,2);
+ assert.equal(summary(snap,'marca',null,'year').total,60);
+ assert.equal(series({monthly:snap.monthly.slice(2,3)},'year').length,1,'one year in the global period gives one point');
+ const d=summary(snap,'marca',['2026-01-31','2026-02-01'],'day');assert.equal(d.total,5);assert.equal(d.rows.find(r=>r.name==='A').count,3);assert.equal(d.rows.reduce((t,r)=>t+r.share,0),1);
+ assert.equal(summary({monthly:snap.monthly},'marca',null,'day').rows.length,0,'no daily data, no invented values');
+ console.log('PASS: year and day granularity series, partial-year labels, single-year point and daily composition.');}

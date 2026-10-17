@@ -83,6 +83,18 @@ def swap_worker(m):
 
 html = re.sub(r'new Blob\(\[("(?:[^"\\]|\\.)*")', swap_worker, html)
 assert found == 1, 'market worker blob not found exactly once'
+
+# 1e. useMarketData lives only in index.html: let the 'interactive-daily' mode ask the
+#     worker for per-day composition (Explorar período, Dia).
+for old, new in [
+    ("const includeInteractive=mode==='interactive';", "const includeInteractive=mode==='interactive'||mode==='interactive-daily',includeDaily=mode==='interactive-daily';"),
+    ("requestKey=React.useMemo(()=>({includeInteractive,manifest,", "requestKey=React.useMemo(()=>({includeInteractive,includeDaily,manifest,"),
+    ("includeCatalog}),[includeInteractive,manifest,", "includeCatalog}),[includeInteractive,includeDaily,manifest,"),
+    ("worker.current.postMessage({id,includeInteractive,manifest,", "worker.current.postMessage({id,includeInteractive,includeDaily,manifest,"),
+]:
+    if new not in html:
+        assert html.count(old) == 1, old
+        html = html.replace(old, new)
 p.write_text(html)
 
 # 2 and 3.

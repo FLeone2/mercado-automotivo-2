@@ -84,6 +84,7 @@
    const dimensions=options.groupDimensions??DIMS,descriptors=new Map();
    const onAcceptedRow=options.onAcceptedRow;
    if(options.includeInteractive&&!acc.interactiveMonthlyGroups)acc.interactiveMonthlyGroups=Object.fromEntries(INTERACTIVE_DIMS.map(d=>[d,new Map()]));
+   const trackDaily=Boolean(options.includeInteractive&&options.includeDaily);if(trackDaily&&!acc.interactiveDailyGroups)acc.interactiveDailyGroups=Object.fromEntries(INTERACTIVE_DIMS.map(d=>[d,new Map()]));
    const historyDimensions=options.includeHistoryComparisons?['marca','modelo','bd_carroceria']:[];
    const trackChannels=options.includeHistoryComparisons||options.includeChannelCoverage||options.includeStateChannels;
    const add=(map,key,count)=>map.set(key,(map.get(key)??0)+count);
@@ -101,7 +102,7 @@
    if(options.includeOriginAnalysis)jointSpecs.push({left:descriptor('marca'),right:descriptor('bd_origem'),target:acc.originByMonth});
    const newJointCounter=spec=>{const length=spec.left.labels.length*spec.right.labels.length;return {...spec,stride:spec.right.labels.length,counts:new Float64Array(length),seen:new Uint8Array(length),touched:[]};};
    const months=new Map(),dates=new Map();
-   const datePlan=date=>{if(dates.has(date))return dates.get(date);if(!date||date<range.start||date>range.end){dates.set(date,null);return null;}const month=date.slice(0,7);if(!months.has(month))months.set(month,{month,total:0,seen:false,counters:grouped.map(newCounter),joints:jointSpecs.map(newJointCounter),channelTotals:{observedCount:0,knownCount:0,unknownCount:0},municipalities:new Map()});const plan={date,count:0,seen:false,month:months.get(month)};dates.set(date,plan);return plan;};
+   const datePlan=date=>{if(dates.has(date))return dates.get(date);if(!date||date<range.start||date>range.end){dates.set(date,null);return null;}const month=date.slice(0,7);if(!months.has(month))months.set(month,{month,total:0,seen:false,counters:grouped.map(newCounter),joints:jointSpecs.map(newJointCounter),channelTotals:{observedCount:0,knownCount:0,unknownCount:0},municipalities:new Map()});const plan={date,count:0,seen:false,month:months.get(month),dayCounters:trackDaily?grouped.filter(desc=>INTERACTIVE_DIMS.includes(desc.dim)).map(newCounter):null};dates.set(date,plan);return plan;};
    const datePlans=(dictionaries.date??[]).map(date=>date==null?undefined:datePlan(date));
    for(const row of cube.rows??[]){
     const dateCode=row[idx.date],plan=datePlans[dateCode]===undefined?datePlan(dictionaries.date?.[dateCode]??dateCode):datePlans[dateCode];if(!plan)continue;
@@ -113,10 +114,11 @@
     for(const joint of plan.month.joints)increment(joint,codeFor(joint.left,row)*joint.stride+codeFor(joint.right,row),count);
     acc.total+=count;acc.sourceRows++;plan.count+=count;plan.seen=true;const month=plan.month;month.total+=count;month.seen=true;
     for(const counter of month.counters)increment(counter,codeFor(counter,row),count);
+    if(plan.dayCounters)for(const counter of plan.dayCounters)increment(counter,codeFor(counter,row),count);
     if(municipality){const rawUf=row[idx.uf],uf=ufLabels[rawUf]===undefined?ufFallback:rawUf;let counter=month.municipalities.get(uf);if(!counter){counter=newCounter(municipality);month.municipalities.set(uf,counter);}increment(counter,codeFor(counter,row),count);}
    }
    const targets={marca:acc.brandsByMonth,combustivel:acc.fuelByMonth,modelo:acc.modelsByMonth,bd_combustivel:acc.technologyByMonth,propulsao:acc.propulsionByMonth,...((options.includeHistoryComparisons||options.includeBody)?{bd_carroceria:acc.bodyByMonth}:{})};
-   for(const plan of dates.values())if(plan?.seen)acc.daily.set(plan.date,(acc.daily.get(plan.date)??0)+plan.count);
+   for(const plan of dates.values())if(plan?.seen){acc.daily.set(plan.date,(acc.daily.get(plan.date)??0)+plan.count);if(plan.dayCounters)for(const counter of plan.dayCounters){const map=acc.interactiveDailyGroups[counter.dim];for(const code of counter.touched){const key=JSON.stringify([plan.date,counter.labels[code]]);map.set(key,(map.get(key)??0)+counter.counts[code]);}}}
    for(const month of months.values()){if(!month.seen)continue;acc.monthly.set(month.month,(acc.monthly.get(month.month)??0)+month.total);
     for(const counter of month.counters){const group=acc.groups[counter.dim],timeline=targets[counter.dim];for(const code of counter.touched){const label=counter.labels[code],count=counter.counts[code];group.set(label,(group.get(label)??0)+count);if(timeline){const key=month.month+'|'+label;timeline.set(key,(timeline.get(key)??0)+count);}if(options.includeInteractive&&acc.interactiveMonthlyGroups[counter.dim]){const map=acc.interactiveMonthlyGroups[counter.dim],key=JSON.stringify([month.month,label]);map.set(key,(map.get(key)??0)+count);}}}
     for(const joint of month.joints)for(const code of joint.touched){const left=joint.left.labels[Math.floor(code/joint.stride)],right=joint.right.labels[code%joint.stride];add(joint.target,JSON.stringify([month.month,left,right]),joint.counts[code]);}
@@ -144,7 +146,9 @@
    const monthlyGroups=Object.fromEntries(INTERACTIVE_DIMS.map(d=>{const names=[...acc.groups[d].keys()].sort(),map=acc.interactiveMonthlyGroups?.[d]??new Map();return [d,monthly.flatMap(m=>names.map(name=>{const observedCount=map.get(JSON.stringify([m.month,name]))??0,count=m.complete?observedCount:null;return {date:m.date,month:m.month,name,count,observedCount:m.observedCount===null?null:observedCount,denominator:m.count,marketShare:m.count>0?count/m.count:null,complete:m.complete,coverageStatus:m.coverageStatus};}))];}));
    const complete=coverage.every(c=>c.complete),total=complete?acc.total:null;
    const groups=Object.fromEntries(INTERACTIVE_DIMS.map(d=>[d,[...acc.groups[d]].map(([name,count])=>({name,count:complete?count:null,observedCount:count,marketShare:total>0?count/total:null})).sort((a,b)=>b.observedCount-a.observedCount||a.name.localeCompare(b.name))]));
-   return {total,observedTotal:acc.total,denominator:total,denominatorDefinition:'Registros no recorte e filtros declarados; períodos incompletos não têm denominador',groups,monthly,monthlyGroups,coverage,complete,missingMonths,incompleteMonths,unavailableMonths,range,requestedRange:range,filters:canonicalFilters(filters),removedFilters:[]};
+   const daily=acc.interactiveDailyGroups?(()=>{const out=[],done=new Map(monthly.map(m=>[m.month,m.complete]));for(let d=new Date(range.start+'T12:00:00Z');iso(d)<=range.end;d.setUTCDate(d.getUTCDate()+1)){const date=iso(d),ok=done.get(date.slice(0,7))===true;out.push({date,month:date.slice(0,7),count:ok?(acc.daily.get(date)??0):null,complete:ok});}return out;})():null;
+   const dailyGroups=acc.interactiveDailyGroups?Object.fromEntries(INTERACTIVE_DIMS.map(d=>[d,[...acc.interactiveDailyGroups[d]].map(([key,count])=>{const [date,name]=JSON.parse(key);return {date,name,count};})])):null;
+   return {total,observedTotal:acc.total,denominator:total,denominatorDefinition:'Registros no recorte e filtros declarados; períodos incompletos não têm denominador',groups,monthly,monthlyGroups,daily,dailyGroups,coverage,complete,missingMonths,incompleteMonths,unavailableMonths,range,requestedRange:range,filters:canonicalFilters(filters),removedFilters:[]};
   }
   // Optional catalog: sparse exact triples, never products of marginal totals.
   const CATALOG_BUCKET_LIMIT=100000, CATALOG_TIMELINE_LIMIT=250000;
@@ -235,7 +239,7 @@
    if(value?.version!==1||value.safe!==true||!value.acc||!Number.isSafeInteger(value.acc.total)||value.acc.total<0||!Number.isSafeInteger(value.acc.sourceRows)||value.acc.sourceRows<0)return false;
    const countMap=map=>{if(!(map instanceof Map))return false;for(const [key,count]of map)if(typeof key!=='string'||!Number.isSafeInteger(count)||count<0)return false;return true;};
    const template=createAccumulator();
-   if(Object.keys(value.acc).some(field=>!Object.hasOwn(template,field)&&field!=='interactiveMonthlyGroups'))return false;
+   if(Object.keys(value.acc).some(field=>!Object.hasOwn(template,field)&&field!=='interactiveMonthlyGroups'&&field!=='interactiveDailyGroups'))return false;
    for(const [field,empty]of Object.entries(template)){
     if(field==='total'||field==='sourceRows')continue;
     const actual=value.acc[field];
@@ -244,6 +248,7 @@
     else if(!actual||!Object.keys(empty).every(dim=>countMap(actual[dim])))return false;
    }
    if(value.acc.interactiveMonthlyGroups&&!INTERACTIVE_DIMS.every(dim=>countMap(value.acc.interactiveMonthlyGroups[dim])))return false;
+   if(value.acc.interactiveDailyGroups&&!INTERACTIVE_DIMS.every(dim=>countMap(value.acc.interactiveDailyGroups[dim])))return false;
    if(membership&&!RANKING_BRAND_DIMENSIONS.every(dim=>value.membership?.[dim] instanceof Map&&[...value.membership[dim]].every(([key,map])=>typeof key==='string'&&countMap(map))))return false;
    if(extra&&(!value.extra||value.extra.limit!==extra.limit||!(value.extra.segmentFields instanceof Set)||!(value.extra.overflow instanceof Set)||!countMap(value.extra.ufByMonth)||!['segmentBrandModel','modelChannelRegion'].every(name=>countMap(value.extra.joints?.[name]))))return false;
    return true;
@@ -354,12 +359,12 @@
     const token=++generation;controller?.abort();controller=null;
     if(data.type==='clear-cache'){loader.clear();resultCache.clear();aggregateCache.clear();sourceSummaries.clear();namespace=null;try{await aggregateStore?.clear();}catch{}return;}
     if(data.type==='cancel'){if(data.releaseCubes)loader.clear();return;}
-    const {id,manifest,filters={},base,includeMarketBaseline=false,includeHistoryComparisons=false,includeChannelReference=false,includeOriginAnalysis=false,includeMitsubishiProfile=false,includeInteractive=false,includeCatalog=false}=data;
+    const {id,manifest,filters={},base,includeMarketBaseline=false,includeHistoryComparisons=false,includeChannelReference=false,includeOriginAnalysis=false,includeMitsubishiProfile=false,includeInteractive=false,includeDaily=false,includeCatalog=false}=data;
     const activeController=new AbortController();controller=activeController;
     try{
      const identity=await manifestCacheIdentity(manifest,base);if(generation!==token)return;
      if(identity!==namespace){loader.setNamespace(identity);resultCache.clear();aggregateCache.clear();sourceSummaries.clear();namespace=identity;}
-     const options={includeMarketBaseline:Boolean(includeMarketBaseline),includeHistoryComparisons:Boolean(includeHistoryComparisons),includeChannelReference:Boolean(includeChannelReference),includeOriginAnalysis:Boolean(includeOriginAnalysis),includeMitsubishiProfile:Boolean(includeMitsubishiProfile),includeInteractive:Boolean(includeInteractive),includeCatalog:Boolean(includeCatalog)};
+     const options={includeMarketBaseline:Boolean(includeMarketBaseline),includeHistoryComparisons:Boolean(includeHistoryComparisons),includeChannelReference:Boolean(includeChannelReference),includeOriginAnalysis:Boolean(includeOriginAnalysis),includeMitsubishiProfile:Boolean(includeMitsubishiProfile),includeInteractive:Boolean(includeInteractive),includeDaily:Boolean(includeInteractive&&includeDaily),includeCatalog:Boolean(includeCatalog)};
      const queryKey=canonicalFilterKey(filters)+'|'+JSON.stringify(options),cached=resultCache.get(queryKey);
      if(cached){port.postMessage({id,result:cached});return;}
      const requestedRange=rangeFrom(filters.date,manifest);let range=requestedRange;
@@ -439,7 +444,7 @@
        if(catalogExtra)mergeCatalogExtras(catalogExtra,contribution.extra);
       };
       if(overlaps(cube.month,range)){
-       await collectMonthly(a,cube,filters,range,{includeInteractive,includeHistoryComparisons,includeOriginAnalysis,includeChannelCoverage:includeChannelReference,sourceMeta:meta,membership:brandMembership,catalogExtra:catalogCurrentExtra});
+       await collectMonthly(a,cube,filters,range,{includeInteractive,includeDaily:Boolean(includeInteractive&&includeDaily),includeHistoryComparisons,includeOriginAnalysis,includeChannelCoverage:includeChannelReference,sourceMeta:meta,membership:brandMembership,catalogExtra:catalogCurrentExtra});
        if(includeCatalog){await collectMonthly(catalogMarket,cube,historyFilters,range,{catalogExtra:catalogMarketExtra});await collectMonthly(catalogMit,cube,{...historyFilters,marca:['MITSUBISHI']},range);}
        if(includeHistoryComparisons){await collectMonthly(historyMarket,cube,historyFilters,range,{groupDimensions:['marca','propulsao','bd_carroceria'],includeBody:true});await collectMonthly(historyMit,cube,{...historyFilters,marca:['MITSUBISHI']},range,{groupDimensions:['marca','propulsao','bd_carroceria'],includeBody:true});}
        if(includeMitsubishiProfile&&mitsubishiAllowed)await collectMonthly(mitsubishiProfile,cube,{...filters,marca:['MITSUBISHI']},range,{groupDimensions:['marca','modelo','grupo_modelo','bd_segmento','bd_classe','bd_combustivel','subsegmento','ano_fabricacao']});
