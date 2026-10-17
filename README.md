@@ -40,6 +40,20 @@ node tests/theme-registry.test.cjs
 
 O script também aplica três ajustes no runtime: tema salvo inexistente volta ao padrão em vez de travar o app; exportação de imagem usa Petróleo; e as cores dos gráficos seguem a paleta (antes o runtime girava o matiz da primeira cor e gerava tons aleatórios).
 
+## Seções novas e como reconstruir
+
+| Área | O que mudou | Fonte | Build |
+|---|---|---|---|
+| Panorama | "O que mudou" em frases; KPIs no topo; sem o mapa repetido | `src/overview-insights.*` | `scripts/build-overview-insights.py` |
+| Concorrência | "Mitsubishi no seu segmento": ranking no segmento, matriz por UF, concentração (HHI) | `src/competitive-reading.*` | `scripts/build-competitive-reading.py` |
+| Territórios | Mapa principal com zoom animado e hover leve; "Marcas no território": top 3 por estado, força da marca, espigões (mercado, Mitsubishi, rede × oportunidade) e Brasil em 3D com rotação | `src/primary-map.*`, `src/territory-brand-maps.*`, `data/geography/municipal-points.json` | `scripts/build-primary-map.py`, `scripts/build-territory-maps.py`, `scripts/build-municipal-points.py` |
+| Economia (ex-Cenários) | "Contexto econômico" primeiro; análises técnicas mantidas nas subabas | `src/scenarios.js`, `src/scenario-context.css`, `src/navigation.js` | `scripts/build-scenario-context.py` |
+| Todas | "Mais análises" visíveis por área; Explorar com todos os formatos e mapas | `src/catalog-workspace.js` | `scripts/build-catalog-areas.py` |
+
+Cada um desses scripts termina rodando `build-design-system.py`, que mantém o design system por último e recalcula os hashes de CSP.
+
+**Atenção:** scripts antigos que encadeiam outros builds (`build-scenarios.py`, `build-evolution.py`, `build-page-notes.py` e similares) podem reverter ajustes posteriores, porque reembutem versões antigas de outros módulos. Para Cenários e navegação, use `build-scenario-context.py`.
+
 ## Testes
 
 ```sh
