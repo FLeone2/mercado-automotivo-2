@@ -10,7 +10,7 @@ assert(source.includes("preset==='suv'&&porte?[porte]:[]"),'An SUV-local porte n
 assert(source.includes("view==='bubbles'&&dimension==='uf'?'marca':dimension"),'Changing from UF race to bubbles selects a supported dimension');
 for(const sourceName of ['evolution-brush','evolution-years','animations','animations-charts','animations-maps','page-notes'])assert.equal((html.match(new RegExp('<style id="'+sourceName+'-styles">','g'))||[]).length,1);
 assert(html.includes('jsxRuntime.jsx(EvolutionInteractive,{key:evolutionView'));assert(html.includes("id:'territories-primary-map'"));assert(html.includes("id:'overview-map'"));assert(html.includes('PageNotesLayout'));
-const css=fs.readFileSync('src/animations.css','utf8');assert(css.includes('minmax(min(100%,180px),1fr)'));assert(css.includes('flex-wrap:wrap'));assert(css.includes('min-width:0'));assert(css.includes('prefers-reduced-motion'));assert(css.includes('min-height:44px'));assert(source.includes('Exportar valores de todos os meses'));
+const css=fs.readFileSync('src/animations.css','utf8');assert(css.includes('minmax(min(100%,180px),1fr)'));assert(css.includes('flex-wrap:wrap'));assert(css.includes('min-width:0'));assert(css.includes('prefers-reduced-motion'));assert(css.includes('min-height:44px'));assert(source.includes('Exportar valores de todos os quadros'));
 console.log('PASS integrated animation mount, source worker identity, syntax/CSP, legacy routes, isolated controls, executive panels, primary maps, accessible responsive contracts and footer.');
 
 assert(css.includes('background:var(--muted);color:var(--text);border-color:var(--accent)'),'Selected view stays readable in dark themes with pale accents');

@@ -39,7 +39,7 @@ function animationMapStandardRow(raw,frame,technology){
   mitShare:marketCount>0&&mitCount!==null?mitCount/marketCount:null,
   technologyShare:marketCount>0&&technologyCount!==null?technologyCount/marketCount:null,
   observedCount:animationMapNonnegative(raw.observedCount??(complete?rawCount:null)),
-  period:String(frame?.month??frame?.date??'—'),mode:frame?.mode==='ytd'?'Acumulado no ano':'Mensal',
+  period:frame?.granularity?(frame.periodLabel??frame.label):String(frame?.month??frame?.date??'—'),mode:frame?.granularity==='day'?'Média móvel de 7 dias':frame?.granularity==='year'?'Acumulado no ano':frame?.mode==='ytd'?'Acumulado no ano':'Mensal',
   coverage:complete?(count===null?'Valor indisponível':'Cobertura completa'):'Cobertura incompleta ou desconhecida',
   coverageStatus:String(raw.coverageStatus??frame?.coverageStatus??(complete?'complete':'unknown'))};
 }
@@ -125,13 +125,13 @@ function AnimationMaps({frames=[],frame=0,metric='mitShare',technology='ALL_ELEC
  const rows=municipal?cities.rows:stateRows,shownRows=rows.filter(row=>catalogMapNormalize(row.name).includes(catalogMapNormalize(query)));
  const cityIndex=new Map(cities.rows.filter(row=>row.ibgeCode).map(row=>[String(row.ibgeCode),row]));
  const legendValues=[...new Set([.25,.5,1].map(ratio=>Math.ceil(domain.observedMax*ratio)))].filter(value=>value>0);
- const active=rows.find(row=>row.name===activeKey),period=current?.month??current?.date??'Período indisponível',mode=current?.mode==='ytd'?'Acumulado no ano':'Mensal';
+ const active=rows.find(row=>row.name===activeKey),period=current?.granularity?(current.periodLabel??current.label):current?.month??current?.date??'Período indisponível',mode=current?.granularity==='day'?'Média móvel de 7 dias':current?.mode==='ytd'?'Acumulado no ano':'Mensal';
  const title=municipal?'Concentração municipal · '+(selectedUF||'escolha uma UF'):kind==='electrification'?'Brasil · '+(ANIMATION_MAP_TECHNOLOGY_LABELS[tech]??'tecnologia indisponível'):'Brasil · participação Mitsubishi por UF';
  const validUF=value$3.features.some(feature=>feature.uf===selectedUF),valueField=municipal?'count':kind==='electrification'?'technologyShare':'mitShare';
  const unknownRows=rows.filter(row=>row[valueField]===null),positiveCities=cities.matches.filter(row=>row.count>0).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));
  const geoUnmatched=municipal?cities.unmatched:stateRows.filter(row=>!row.path);
  const unmatchedVolume=geoUnmatched.every(row=>animationMapNonnegative(row.count)!==null)?geoUnmatched.reduce((sum,row)=>sum+row.count,0):null;
- const extent=list.length?(list[0].month??list[0].date)+' a '+(list[list.length-1].month??list[list.length-1].date):'janela indisponível';
+ const extent=list.length?(list[0].label??list[0].month??list[0].date)+' a '+(list[list.length-1].label??list[list.length-1].month??list[list.length-1].date):'janela indisponível';
  const inspect=row=>({tabIndex:0,role:'button','aria-label':animationMapTooltip(row,kind,tech),'aria-pressed':activeKey===row.name,onMouseEnter:()=>setActiveKey(row.name),onFocus:()=>setActiveKey(row.name),onClick:()=>setActiveKey(row.name),onKeyDown:event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setActiveKey(row.name);}if(event.key==='Escape')setActiveKey(null);}});
  React.useEffect(()=>{setActiveKey(null);setQuery('');},[kind,selectedUF,tech]);
  const marks=municipal?(geometry?.features??[]).map(feature=>{

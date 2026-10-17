@@ -42,7 +42,7 @@
     const start=String(request.startMonth??request.start??months[0]??'').slice(0,7),end=String(request.endMonth??request.end??months.at(-1)??'').slice(0,7);listMonths(start,end);
     const filters={...(request.filters??{})};const originalDate=filters.date??'all';filters.date=start+'-01..'+monthEnd(end);
     const selectedUF=String(request.selectedUF??request.uf??'').toUpperCase();if(selectedUF&&!/^[A-Z]{2}$/.test(selectedUF))throw Error('Escolha uma UF válida.');
-    return {...request,startMonth:start,endMonth:end,mode:request.mode==='ytd'?'ytd':'monthly',dimension:GROUP_DIMS.includes(request.dimension)?request.dimension:'marca',filters,originalDate,selectedUF,preset:request.preset??'all',includeYoY:request.includeYoY!==false};
+    return {...request,startMonth:start,endMonth:end,granularity:['day','year'].includes(request.granularity)?request.granularity:'month',mode:request.granularity==='year'||request.mode==='ytd'&&request.granularity!=='day'?'ytd':'monthly',dimension:GROUP_DIMS.includes(request.dimension)?request.dimension:'marca',filters,originalDate,selectedUF,preset:request.preset??'all',includeYoY:request.includeYoY!==false};
   }
   const MIX_DIMENSIONS = {technology:'propulsao',body:'bd_carroceria',porte:'bd_segmento',vehicleOrigin:'bd_origem',channel:'tipo_venda'};
   function projectionSpec(request={}) {
@@ -129,10 +129,38 @@
       return projectFrame(finishFrame({...frame,mode:'ytd',periodStart:frame.month.slice(0,4)+'-01-01',periodEnd:monthEnd(frame.month),complete,coverageStatus:complete?'complete':scopeConsistent?'incomplete-ytd':'scope-changed',missingMonths,scopeConsistent,observedTotal:total,groups:Object.fromEntries(GROUP_DIMS.map(dim=>[dim,mergeRows(present,'groups',dim)])),ufRows:mergeRows(present,'ufRows'),municipalityRows:mergeRows(present,'municipalityRows'),originRows:mergeRows(present,'originRows'),channelCoverage:channel,sourceRows:present.reduce((sum,f)=>sum+f.sourceRows,0)}),request);
     });
   }
+
+  const ABBR=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const priorDay = day => { const y=+day.slice(0,4)-1,m=+day.slice(5,7),d=+day.slice(8,10),t=new Date(Date.UTC(y,m-1,d));return (t.getUTCMonth()===m-1?t:new Date(Date.UTC(y,m,0))).toISOString().slice(0,10); };
+  const dayLabel = day => day.slice(8,10)+'/'+day.slice(5,7)+'/'+day.slice(0,4);
+  const prevMonth = month => { const y=+month.slice(0,4),m=+month.slice(5,7);return m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0'); };
+  function daysOf(month) { const n=+monthEnd(month).slice(8,10);return Array.from({length:n},(_,i)=>month+'-'+String(i+1).padStart(2,'0')); }
+  const asDay = (frame,day) => ({...frame,month:day,date:day,granularity:'day',label:dayLabel(day)});
+  // One frame per calendar day of the month; days without rows are empty, not missing.
+  function dailyFrames(cube,meta,request) {
+    const cols=cube.columns??[...cube.dimensions,'count'],dateCol=cols.indexOf('date'),dates=cube.dictionaries?.date??[],byDate=new Map();
+    for(const row of cube.rows??[]){const d=dates[row[dateCol]]??row[dateCol];let list=byDate.get(d);if(!list){list=[];byDate.set(d,list);}list.push(row);}
+    return daysOf(cube.month).map(day=>asDay(byDate.has(day)?aggregateCube({...cube,rows:byDate.get(day)},meta,request):emptyFrame(cube.month,meta,request),day));
+  }
+  function emptyDays(month,meta,request,status,reason) { return daysOf(month).map(day=>asDay({...emptyFrame(month,meta,request,status),...(reason?{reason}:{})},day)); }
+  // Trailing window of `size` days ending at each day: smooths weekday/weekend noise.
+  function rollingFrames(days,size,request={}) {
+    const sorted=[...days].sort((a,b)=>textCompare(a.month,b.month));
+    return sorted.map((frame,i)=>{
+      const present=sorted.slice(Math.max(0,i-size+1),i+1),missingMonths=present.filter(f=>!f.complete).map(f=>f.month),scopeConsistent=new Set(present.map(f=>f.scopeKey)).size<=1,complete=present.length===size&&!missingMonths.length&&scopeConsistent;
+      const total=present.reduce((sum,f)=>sum+f.observedTotal,0),channel={observedCount:total,knownCount:0,unknownCount:0,available:present.some(f=>f.channelCoverage.available),sourceFields:[...new Set(present.flatMap(f=>f.channelCoverage.sourceFields??[]))]};for(const f of present){channel.knownCount+=f.channelCoverage.knownCount;channel.unknownCount+=f.channelCoverage.unknownCount;}
+      return projectFrame(finishFrame({...frame,mode:'monthly',periodStart:present[0].month,periodEnd:frame.month,windowDays:size,complete,coverageStatus:complete?'complete':scopeConsistent?'incomplete-window':'scope-changed',missingMonths,scopeConsistent,observedTotal:total,groups:Object.fromEntries(GROUP_DIMS.map(dim=>[dim,mergeRows(present,'groups',dim)])),ufRows:mergeRows(present,'ufRows'),municipalityRows:mergeRows(present,'municipalityRows'),originRows:mergeRows(present,'originRows'),channelCoverage:channel,sourceRows:present.reduce((sum,f)=>sum+f.sourceRows,0)}),request);
+    });
+  }
+  // One frame per year: January to the window's end month, so every year compares like with like.
+  function pickYearFrames(frames,startMonth,endMonth) {
+    const mm=endMonth.slice(5),y0=+startMonth.slice(0,4),y1=+endMonth.slice(0,4);
+    return frames.filter(f=>f.month.slice(5)===mm&&+f.month.slice(0,4)>=y0&&+f.month.slice(0,4)<=y1).map(f=>{const y=f.month.slice(0,4);return {...f,granularity:'year',label:y,periodLabel:mm==='12'?'Ano '+y:'Ano '+y+' · jan–'+ABBR[+mm-1]};});
+  }
   function safeYoY(current,prior,comparable=true) { return comparable&&Number.isFinite(current)&&Number.isFinite(prior)&&prior>0?(current-prior)/prior:null; }
   function attachYoY(frames,request={}) {
     const index=new Map(frames.map(frame=>[frame.month,frame]));return frames.map(frame=>{
-      const previous=index.get(priorMonth(frame.month)),comparable=Boolean(frame.complete&&previous?.complete&&frame.mode===previous.mode&&frame.scopeKey===previous.scopeKey);
+      const previous=index.get(frame.granularity==='day'?priorDay(frame.month):priorMonth(frame.month)),comparable=Boolean(frame.complete&&previous?.complete&&frame.mode===previous.mode&&frame.scopeKey===previous.scopeKey);
       const transform=(current,prior)=>{const older=new Map((prior??[]).map(row=>[row.name,row])),now=new Map((current??[]).map(row=>[row.name,row]));return [...new Set([...now.keys(),...older.keys()])].map(name=>{const row=now.get(name)??finishRow({...older.get(name),observedCount:0,observedMitCount:0,brands:record(),observedTechnologyCounts:record()},frame.total,frame.complete),old=older.get(name),priorCount=comparable?(old?.count??0):null;return {...row,priorCount,priorShare:comparable?(old?.share??(previous.total>0?0:null)):null,yoy:safeYoY(row.count,priorCount,comparable),yoyStatus:!comparable?'unavailable':priorCount===0?'zero-base':'comparable'};}).sort((a,b)=>(b.count??-1)-(a.count??-1)||textCompare(a.name,b.name));};
       const groups=Object.fromEntries(GROUP_DIMS.map(dim=>[dim,transform(frame.groups[dim],previous?.groups?.[dim])]));const originRows=transform(frame.originRows,previous?.originRows);
       return projectFrame({...frame,priorTotal:comparable?previous.total:null,yoy:safeYoY(frame.total,previous?.total,comparable),yearAvailable:comparable,groups,entities:groups[frame.dimension??'marca'],originRows,ufRows:transform(frame.ufRows,previous?.ufRows),municipalityRows:transform(frame.municipalityRows,previous?.municipalityRows),mixes:{technology:groups.propulsao,body:groups.bd_carroceria,porte:groups.bd_segmento,origin:originRows,channel:groups.tipo_venda,vehicleOrigin:groups.bd_origem}},request);
@@ -156,5 +184,5 @@
     const index=new Map();for(const feature of geometry?.features??[]){if(feature.uf&&feature.uf!==geometry.uf)continue;const key=normalizeName(feature.name);index.set(key,index.has(key)?null:feature);}
     return frames.map(frame=>({...frame,municipalityRows:frame.municipalityRows.map(row=>{const feature=row.uf===geometry?.uf?index.get(normalizeName(row.municipality)):null;const code=feature&&/^\d{7}$/.test(String(feature.code))?String(feature.code):null;return {...row,ibgeCode:code,geographicMatch:code?'Nome normalizado + UF únicos':'Sem correspondência única'};})}));
   }
-  return {DIMS,GROUP_DIMS,ELECTRIFIED,selection,canonicalFilters,validMonth,monthEnd,listMonths,priorMonth,sourceCoverage,propulsion,classifyBrandOrigin,presetChecks,normalizeRequest,projectionSpec,projectFrame,scopeKey,aggregateCube,emptyFrame,yearToDateFrames,attachYoY,safeYoY,rankFrame,bubbleRows,fixedBubbleScales,joinMunicipalities,textCompare};
+  return {DIMS,GROUP_DIMS,ELECTRIFIED,selection,canonicalFilters,validMonth,monthEnd,listMonths,priorMonth,sourceCoverage,propulsion,classifyBrandOrigin,presetChecks,normalizeRequest,projectionSpec,projectFrame,scopeKey,aggregateCube,emptyFrame,yearToDateFrames,dailyFrames,emptyDays,rollingFrames,pickYearFrames,priorDay,prevMonth,daysOf,attachYoY,safeYoY,rankFrame,bubbleRows,fixedBubbleScales,joinMunicipalities,textCompare};
 });

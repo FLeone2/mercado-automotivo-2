@@ -122,12 +122,29 @@
   }
   async function runAnimations(input,{loadCube,isCancelled=()=>false,onProgress=()=>{},yieldControl=()=>new Promise(resolve=>setTimeout(resolve,0)),geometryLoader=loadGeometry,signal,monthlyCache,sourceIdentity}={}) {
     const request=A.normalizeRequest(input),projection=A.projectionSpec(request),{manifest,filters,startMonth,endMonth}=request,index=new Map((manifest?.months??[]).map(meta=>[meta.month,meta]));
-    const visible=A.listMonths(startMonth,endMonth),context=request.mode==='ytd'?A.listMonths(startMonth.slice(0,4)+'-01',endMonth):visible;
+    const gran=request.granularity,visible=A.listMonths(startMonth,endMonth);
+    if(gran==='day'&&visible.length>12)throw Error('A visão por dias aceita janelas de até 12 meses. Reduza o período ou percorra por meses.');
+    const context=gran==='day'?A.listMonths(A.prevMonth(startMonth),endMonth):request.mode==='ytd'?A.listMonths(startMonth.slice(0,4)+'-01',endMonth):visible;
     const needed=[...new Set([...context,...(request.includeYoY?context.map(A.priorMonth):[])])].sort();
     const monthNamespace=monthlyCache?await hashCacheIdentity([sourceIdentity??[request.base,manifest],monthlyRequestIdentity(request)]):null;
     const frames=[],choices=Object.fromEntries(A.DIMS.map(dim=>[dim,new Set()])),errors=[];
     for(let i=0;i<needed.length;i++){
       if(isCancelled())throw new DOMException('Consulta cancelada.','AbortError');
+      if(gran==='day'){
+        const month=needed[i],meta=index.get(month);let list;
+        if(!meta?.cubePath)list=A.emptyDays(month,meta,request);
+        else {
+          try{
+            const needsOrigin=A.selection(filters.bd_origem).length>0;
+            if(needsOrigin&&!meta.originCubePath)throw Error('Origem do veículo indisponível na fonte mensal.');
+            const loadMeta=meta.originCubePath&&(request.includeVehicleOrigin!==false||needsOrigin)?{...meta,cubePath:meta.originCubePath,sha256:meta.originCubeSha256??meta.sha256}:meta;
+            const cube=await loadCube(loadMeta,request.base,signal);if(isCancelled())throw new DOMException('Consulta cancelada.','AbortError');
+            list=A.dailyFrames(cube,meta,request);
+            if(visible.includes(month))for(const dim of A.DIMS)for(const value of cube.dictionaries?.[dim]??[])choices[dim].add(String(value??'Não informado'));
+          }catch(error){if(error.name==='AbortError'||isCancelled())throw error;list=A.emptyDays(month,meta,request,'unavailable',error.message);errors.push({month,error:error.message});}
+        }
+        frames.push(...list);onProgress({done:i+1,total:needed.length,month});if(i<needed.length-1)await yieldControl();continue;
+      }
       const month=needed[i],meta=index.get(month),monthKey=monthlyCache?JSON.stringify([monthNamespace,month,meta??null]):null;let frame,monthlyChoices=null;
       const cached=monthlyCache?await monthlyCache.get(monthKey):null;cancelled(signal,isCancelled());
       if(cached){frame=cached.frame;monthlyChoices=cached.choices;}
@@ -152,16 +169,17 @@
     }
     let monthlyFrames=frames,geometryWarning=null;
     if(request.selectedUF&&(!projection||projection.municipal)){try{const geometry=input.geometry??await geometryLoader(request.selectedUF,request.base,signal);if(isCancelled())throw new DOMException('Consulta cancelada.','AbortError');monthlyFrames=A.joinMunicipalities(frames,geometry);}catch(error){if(error.name==='AbortError'||isCancelled())throw error;geometryWarning=error.message;}}
-    const transformed=request.mode==='ytd'?A.yearToDateFrames(monthlyFrames,request):monthlyFrames;
+    const transformed=gran==='day'?A.rollingFrames(monthlyFrames,7,request):request.mode==='ytd'?A.yearToDateFrames(monthlyFrames,request):monthlyFrames;
     const compared=request.includeYoY?A.attachYoY(transformed,request):transformed;
-    const resultFrames=compared.filter(frame=>visible.includes(frame.month)).map(frame=>A.projectFrame(frame,request,true));
-    const includeMonthlyFrames=!projection||request.mode==='monthly'||request.includeMonthlyFrames===true;
+    const dayFrom=startMonth+'-01',dayTo=A.monthEnd(endMonth),shown=gran==='day'?compared.filter(frame=>frame.month>=dayFrom&&frame.month<=dayTo):gran==='year'?A.pickYearFrames(compared,startMonth,endMonth):compared.filter(frame=>visible.includes(frame.month));
+    const resultFrames=shown.map(frame=>A.projectFrame(frame,request,true));
+    const includeMonthlyFrames=gran==='month'&&(!projection||request.mode==='monthly'||request.includeMonthlyFrames===true);
     const monthlyCompared=request.mode==='monthly'?resultFrames:!includeMonthlyFrames?[]:(request.includeYoY?A.attachYoY(monthlyFrames,request):monthlyFrames).filter(frame=>visible.includes(frame.month)).map(frame=>A.projectFrame(frame,request,true));
     const coverage=resultFrames.map(frame=>({month:frame.month,status:frame.coverageStatus,complete:frame.complete,missingMonths:frame.missingMonths??[],reason:frame.reason??null}));
-    const windowDisclosure='Animações usam meses civis completos de '+startMonth+' a '+endMonth+'. O filtro global de datas ('+String(request.originalDate)+') é substituído apenas nesta aba; os demais filtros são preservados.';
+    const windowDisclosure=(gran==='day'?'Quadros diários: cada quadro soma os 7 dias terminados no dia (média móvel), e o crescimento compara com a mesma janela do ano anterior. ':gran==='year'?'Quadros anuais: cada ano soma janeiro até '+endMonth.slice(5)+'/ano, para comparar períodos iguais. ':'')+'Animações usam meses civis completos de '+startMonth+' a '+endMonth+'. O filtro global de datas ('+String(request.originalDate)+') é substituído apenas nesta aba; os demais filtros são preservados.';
     const presetNotes=A.presetChecks(request.preset,request.porte).map(([dim,values])=>dim+' = '+values.join(' ou ')+' (interseção com os filtros globais).');
     const notes=[windowDisclosure,...presetNotes,'Participações usam volumes ponderados do recorte completo, antes do Top N.','Mês ausente ou parcial fica indisponível; YTD reinicia em janeiro e exige todos os meses.',...(geometryWarning?[geometryWarning]:[])];
-    return {frames:resultFrames,monthlyFrames:monthlyCompared,monthlyFramesIncluded:includeMonthlyFrames,dataView:projection?.view??null,coverage,complete:coverage.every(c=>c.complete),mode:request.mode,dimension:request.dimension,filters:A.canonicalFilters(filters),originalDate:request.originalDate,removedFilters:[],replacedFilters:['date'],range:{start:startMonth+'-01',end:A.monthEnd(endMonth)},startMonth,endMonth,selectedUF:request.selectedUF,municipalityRequested:Boolean(request.selectedUF)&&(!projection||projection.municipal),windowDisclosure,notes,preset:request.preset,presetFilters:A.presetChecks(request.preset,request.porte),presetValidation:{required:A.presetChecks(request.preset,request.porte),observed: Object.fromEntries(['bd_segmento','bd_carroceria'].map(dim=>[dim,[...choices[dim]].sort(A.textCompare)]))},choices:Object.fromEntries(Object.entries(choices).map(([dim,values])=>[dim,[...values].sort(A.textCompare)])),sourceErrors:errors.filter(e=>visible.includes(e.month)),geometryWarning,denominatorDefinition:'Volume de emplacamentos no mesmo mês e recorte, antes da seleção visual Top N.',electrifiedTechnologies:[...A.ELECTRIFIED]};
+    return {frames:resultFrames,monthlyFrames:monthlyCompared,monthlyFramesIncluded:includeMonthlyFrames,dataView:projection?.view??null,coverage,complete:coverage.every(c=>c.complete),mode:request.mode,granularity:gran,dimension:request.dimension,filters:A.canonicalFilters(filters),originalDate:request.originalDate,removedFilters:[],replacedFilters:['date'],range:{start:startMonth+'-01',end:A.monthEnd(endMonth)},startMonth,endMonth,selectedUF:request.selectedUF,municipalityRequested:Boolean(request.selectedUF)&&(!projection||projection.municipal),windowDisclosure,notes,preset:request.preset,presetFilters:A.presetChecks(request.preset,request.porte),presetValidation:{required:A.presetChecks(request.preset,request.porte),observed: Object.fromEntries(['bd_segmento','bd_carroceria'].map(dim=>[dim,[...choices[dim]].sort(A.textCompare)]))},choices:Object.fromEntries(Object.entries(choices).map(([dim,values])=>[dim,[...values].sort(A.textCompare)])),sourceErrors:errors.filter(e=>visible.includes(e.month)),geometryWarning,denominatorDefinition:'Volume de emplacamentos no mesmo mês e recorte, antes da seleção visual Top N.',electrifiedTechnologies:[...A.ELECTRIFIED]};
   }
   function installAnimationWorker(port,{loader=createMarketCubeLoader(),resultCache=createResultCache({maxBytes:24*1024*1024,maxEntries:4}),identity=manifestCacheIdentity,yieldControl,geometryLoader=loadGeometry,monthlyCache=createMonthlyFrameCache()}={}) {
     let generation=0,controller=null,namespace=null;
