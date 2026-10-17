@@ -66,5 +66,9 @@
  [
   "\"Ver composição completa, incluindo não classificados\"",
   "\"Ver composição completa por propulsão\""
+ ],
+ [
+  "jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})",
+  "jsxRuntime.jsx(LeaderMap,{filters:effectiveFilters,base:getBase(snapshot)})\n   , tab==='geography'&&mapReady&&jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})"
  ]
 ]

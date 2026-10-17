@@ -47,6 +47,7 @@ MODULES = [
     ('EXPORT TOOLS', ['export-tools.js']),
     ('HISTORY ANALYSES', ['history-analyses.js']),
     ('TRUST GUIDE', ['trust-guide.js']),
+    ('LEADER MAP', ['leader-map.js']),
 ]
 # style id -> source stylesheet ('overview-clean-styles' has no source and is left as is).
 STYLES = {
@@ -66,6 +67,7 @@ STYLES = {
     'export-tools-styles': 'export-tools.css',
     'history-analyses-styles': 'history-analyses.css',
     'trust-guide-styles': 'trust-guide.css',
+    'leader-map-styles': 'leader-map.css',
 }
 # New modules added after the reformulation register here too (see EXTRA_MODULES below).
 EXTRA_MODULES = []   # (marker, [files], style id or None, css file or None)
@@ -161,10 +163,10 @@ MOUNTS = [
      "const scenarioView=SCENARIO_TABS.some(item=>item.value===scenarioSaved.tab)?scenarioSaved.tab:'context';"),
     # 'interactive-daily' asks the worker for per-day composition (Explorar período · Dia).
     ("const includeInteractive=mode==='interactive';",
-     "const includeInteractive=mode==='interactive'||mode==='interactive-daily',includeDaily=mode==='interactive-daily';"),
-    ("requestKey=React.useMemo(()=>({includeInteractive,manifest,", "requestKey=React.useMemo(()=>({includeInteractive,includeDaily,manifest,"),
-    ("includeCatalog}),[includeInteractive,manifest,", "includeCatalog}),[includeInteractive,includeDaily,manifest,"),
-    ("worker.current.postMessage({id,includeInteractive,manifest,", "worker.current.postMessage({id,includeInteractive,includeDaily,manifest,"),
+     "const includeInteractive=mode==='interactive'||mode==='interactive-daily',includeDaily=mode==='interactive-daily',includeMunicipalLeaders=mode==='leaders';"),
+    ("requestKey=React.useMemo(()=>({includeInteractive,manifest,", "requestKey=React.useMemo(()=>({includeInteractive,includeDaily,includeMunicipalLeaders,manifest,"),
+    ("includeCatalog}),[includeInteractive,manifest,", "includeCatalog}),[includeInteractive,includeDaily,includeMunicipalLeaders,manifest,"),
+    ("worker.current.postMessage({id,includeInteractive,manifest,", "worker.current.postMessage({id,includeInteractive,includeDaily,includeMunicipalLeaders,manifest,"),
 ]
 MOUNTS_PATH = root / 'scripts' / 'build-mounts.json'
 if MOUNTS_PATH.exists():
