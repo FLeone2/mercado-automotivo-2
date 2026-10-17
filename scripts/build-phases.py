@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Rebuild phases 1–3 from verified cached sources without changing original cubes."""
+import os as _os, sys as _sys
+if __name__ == '__main__' and _os.environ.get('MA_LEGACY_BUILD') != '1':
+    _sys.exit('Script legado: ele reembute versões antigas de outros módulos. Use python3 scripts/build.py. '
+              'Para forçar mesmo assim: MA_LEGACY_BUILD=1 python3 ' + _sys.argv[0])
 import argparse, hashlib, json, os, subprocess, sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]

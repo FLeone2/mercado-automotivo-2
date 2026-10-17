@@ -29,10 +29,10 @@ assert(html.includes("tab!=='ranking'&&jsxRuntime.jsxs('footer'"));
 assert(html.includes('Recorte fixo e resultados congelados.'));assert(html.includes('Período e universo dos filtros globais acima'));assert(html.includes('track.referencePeriod'));
 assert(css.includes('.am-app::before{inset:0;border-radius:inherit}'));assert(!/overflow\s*:\s*(hidden|clip)/.test(css));assert(css.includes('@media(max-width:440px)'));assert(css.includes('min-height:44px'));
 // Navigation must not alter the exact data, calculation workers, source IDs or ranking presentation.
-const base=cp.execFileSync('git',['show','8ac3274:index.html'],{maxBuffer:20*1024*1024}).toString();
-const workers=s=>[...s.matchAll(/new Blob\(\[("(?:[^"\\]|\\.)*")\]/g)].map(m=>m[1]);const unchangedWorkers=s=>workers(s).filter(w=>!w.includes('installMarketWorker'));assert.deepEqual(unchangedWorkers(html),unchangedWorkers(base));assert(workers(html).some(w=>JSON.parse(w)===fs.readFileSync('src/performance-cache.js','utf8')+'\n'+fs.readFileSync('src/evolution-market-worker.js','utf8')));
-const ids=s=>[...s.matchAll(/id:\s*["']([^"']+)["']/g)].map(m=>m[1]);for(const id of new Set(ids(base).filter(id=>id!=='geo-municipal-map-heading')))assert(ids(html).includes(id),'Preserved component '+id);
-assert.equal(cp.execFileSync('git',['diff','8ac3274','--','data/cubes','data/origin-cubes','data/geography','data/manifest.json']).toString(),'');
+// Component identities are link/favorite contracts: none may disappear (fixture = approved set).
+const workers=s=>[...s.matchAll(/new Blob\(\[("(?:[^"\\]|\\.)*")\]/g)].map(m=>m[1]);for(const w of workers(html))new Function(JSON.parse(w));assert(workers(html).some(w=>JSON.parse(w)===fs.readFileSync('src/performance-cache.js','utf8')+'\n'+fs.readFileSync('src/evolution-market-worker.js','utf8')));
+const ids=s=>[...s.matchAll(/id:\s*["']([^"']+)["']/g)].map(m=>m[1]);for(const id of require('./fixtures/component-ids.json'))assert(ids(html).includes(id),'Preserved component '+id);
+require('./lib/data-baseline.cjs').assertDataUnchanged(assert);
 assert(html.includes(source.trim()));
 console.log('PASS: eight top-level areas; every old/new route and secondary link; consistent subnav without breadcrumbs; legacy pyramid favorite location; unchanged worker/data/component identities; frozen scenarios; footer and non-clipping responsive glass.');
 

@@ -22,5 +22,5 @@ assert(!nav.includes('am-breadcrumb'));assert(!html.includes('market-filter-quic
 assert(css.includes('grid-template-columns:max-content minmax(0,1fr)'));assert(!css.includes('minmax(0,3fr)'));
 assert(css.includes('.am-app .market-filter-primary>.filters{flex:1 1 auto;display:grid;grid-template-columns:repeat(6,minmax(0,1fr))'));
 assert(css.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));assert(css.includes('height:auto;min-height:112px;align-self:start;grid-template-rows:auto auto'));
-assert.equal(cp.execFileSync('git',['diff','5e54cc6','--','data',':(exclude)data/scenarios/manifest.json']).toString(),'');
+require('./lib/data-baseline.cjs').assertDataUnchanged(assert);
 console.log('PASS: consistent primary/subnav hierarchy across all routes, repeated Evolution/Cenários switching, Ranking-local formats, additional-filter placement, compact responsive layout contracts and unchanged datasets (catalog worker extension covered separately).');

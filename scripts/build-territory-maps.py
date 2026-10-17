@@ -4,6 +4,10 @@ Inserts src/territory-brand-maps.js before useMarketData, mounts it right after
 the primary map on the Territórios tab, embeds its stylesheet, then runs
 build-design-system.py so the design system stays last and CSP hashes are fresh.
 """
+import os as _os, sys as _sys
+if __name__ == '__main__' and _os.environ.get('MA_LEGACY_BUILD') != '1':
+    _sys.exit('Script legado: ele reembute versões antigas de outros módulos. Use python3 scripts/build.py. '
+              'Para forçar mesmo assim: MA_LEGACY_BUILD=1 python3 ' + _sys.argv[0])
 from pathlib import Path
 import re, subprocess, sys
 

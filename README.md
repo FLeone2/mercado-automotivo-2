@@ -50,17 +50,29 @@ O script também aplica três ajustes no runtime: tema salvo inexistente volta a
 | Economia (ex-Cenários) | "Contexto econômico" primeiro; análises técnicas mantidas nas subabas | `src/scenarios.js`, `src/scenario-context.css`, `src/navigation.js` | `scripts/build-scenario-context.py` |
 | Todas | "Mais análises" visíveis por área; Explorar com todos os formatos e mapas | `src/catalog-workspace.js` | `scripts/build-catalog-areas.py` |
 
-Cada um desses scripts termina rodando `build-design-system.py`, que mantém o design system por último e recalcula os hashes de CSP.
+### Build único
 
-**Atenção:** scripts antigos que encadeiam outros builds (`build-scenarios.py`, `build-evolution.py`, `build-page-notes.py` e similares) podem reverter ajustes posteriores, porque reembutem versões antigas de outros módulos. Para Cenários e navegação, use `build-scenario-context.py`.
+```sh
+python3 scripts/build.py      # reembute todos os módulos de src/ no index.html
+bash scripts/test.sh          # todos os testes Node e Python
+bash scripts/build-dist.sh    # gera dist/ (o que o Cloudflare publica)
+node tests/visual/run.cjs     # varredura visual: claro/escuro, desktop/celular
+```
+
+`scripts/build.py` é o único build. Ele lista cada módulo (`// BEGIN X` … `// END X`) e cada folha de estilo,
+reaplica os pontos de montagem, roda a transformação das notas e, por último, o design system com os hashes de CSP.
+Módulos novos entram em `MODULES`/`STYLES` dentro dele.
+
+Os scripts antigos `build-*.py` que encadeiam outros builds se recusam a rodar (eles reembutiam versões antigas de outros módulos).
+Para forçar, use `MA_LEGACY_BUILD=1`, mas prefira sempre `build.py`.
 
 ## Testes
 
-```sh
-for t in tests/*.cjs; do node "$t" || echo "FALHOU: $t"; done
-```
-
-`compact-navigation`, `header-gap` e `navigation` dependem de commits do histórico local do Codex que não existem no GitHub e falham desde antes da reformulação.
+- `bash scripts/test.sh` roda tudo. Os testes estatísticos de Economia precisam de `pip install -r scripts/requirements-scenarios.txt`.
+- `tests/fixtures/data-baseline.json` guarda o SHA-256 de cada arquivo de dados: mudanças de interface não podem alterar dados.
+  Ao incluir um mês novo de propósito, atualize com `node tests/lib/data-baseline.cjs --update`.
+- `tests/fixtures/component-ids.json` lista as identidades de componentes usadas por links e favoritos; nenhuma pode sumir.
+- `tests/visual/run.cjs` falha com erro de página ou rolagem horizontal e lista textos cortados como aviso; as capturas ficam em `tests/visual/output/`.
 
 ## Documentação histórica
 
