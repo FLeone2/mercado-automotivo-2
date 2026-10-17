@@ -46,3 +46,14 @@ const points = JSON.parse(fs.readFileSync('data/geography/municipal-points.json'
 assert.equal(points.version, 1);
 assert(points.rows.length >= 5570);
 console.log('territory brand maps: top 3, colors, projection and embedding verified');
+
+// Brand strength: share in the state ÷ national share × 100.
+const strength = api.tbmStrength({cells: [
+  {x: 'SP', series: 'MITSUBISHI', observedCount: 10, categoryDenominator: 1000},
+  {x: 'GO', series: 'MITSUBISHI', observedCount: 30, categoryDenominator: 1000},
+  {x: 'GO', series: 'FIAT', observedCount: 300, categoryDenominator: 1000}]}, 'MITSUBISHI');
+assert.equal(strength.national, .02);
+assert.equal(Math.round(strength.rows.get('SP').index), 50);
+assert.equal(Math.round(strength.rows.get('GO').index), 150);
+assert.equal(api.tbmStrength({cells: []}, 'MITSUBISHI'), null);
+console.log('territory brand maps: brand strength index verified');

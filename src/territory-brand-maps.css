@@ -50,3 +50,11 @@
 .tbm-tip-row i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:6px}
 .tbm-muted{color:var(--secondary)}
 @media(prefers-reduced-motion:reduce){.tbm-card,.tbm-fade{animation:none}.tbm-stack span,.tbm-state{transition:none}}
+.tbm-strength{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:900px){.tbm-strength{grid-template-columns:minmax(0,1fr)}}
+.tbm-strength-side{display:flex;flex-direction:column;gap:8px}
+.tbm-scale{height:10px;border-radius:5px;background:linear-gradient(90deg,color-mix(in srgb,var(--chart-2) 85%,var(--muted)),var(--muted),color-mix(in srgb,var(--chart-1) 85%,var(--muted)))}
+.tbm-scale-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--secondary)}
+.tbm-readout{margin:0;font-size:13px;min-height:40px}
+.tbm-toplist{margin:0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.tbm-range select{font:inherit;font-size:13px;min-height:32px;border:1px solid var(--border);border-radius:8px;background:var(--control);color:var(--text);padding:0 8px}
