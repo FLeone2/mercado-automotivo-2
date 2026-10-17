@@ -74,6 +74,30 @@ Para forçar, use `MA_LEGACY_BUILD=1`, mas prefira sempre `build.py`.
 - `tests/fixtures/component-ids.json` lista as identidades de componentes usadas por links e favoritos; nenhuma pode sumir.
 - `tests/visual/run.cjs` falha com erro de página ou rolagem horizontal e lista textos cortados como aviso; as capturas ficam em `tests/visual/output/`.
 
+## Atualizar com um mês novo
+
+1. Coloque o cubo do mês em `data/cubes/` e `data/origin-cubes/` e atualize `data/manifest.json` (mesmo processo de ingestão usado até aqui).
+2. Rode `bash scripts/update-derived.sh`. Ele regenera o histórico de 10 anos, registra a nova impressão digital dos dados, reembute os módulos, roda todos os testes e gera `dist/`.
+3. Faça commit e push para `main`. O GitHub roda as verificações (`.github/workflows/checks.yml`) e o Cloudflare publica.
+
+Os dados da Economia (Banco Central, IBGE) são atualizados à parte com `python scripts/build_scenarios.py --repo .`, que precisa de internet.
+
+## Funções novas (2026-10)
+
+| Área | O que faz | Fonte |
+|---|---|---|
+| Todas | Pulso do recorte: mercado, marca em foco, participação, posição e ritmo por dia útil | `src/market-pulse.*` |
+| Panorama | Perguntas rápidas e resumo de uma página em PDF | `src/market-pulse.js`, `src/export-tools.*` |
+| Todas | Copiar link, Imprimir / PDF, Favoritos em qualquer área, Baixar PNG dos gráficos | `src/navigation.js`, `src/export-tools.*`, `scripts/build-mounts.json` |
+| Evolução | Ritmo por dia útil, sazonalidade e meses fora do padrão | `src/history-analyses.js` |
+| Concorrência | De onde veio a variação; modelo contra modelo | `src/history-analyses.js` |
+| Propulsão | Eletrificação desde 2016 | `src/history-analyses.js` |
+| Territórios | Emplacamentos por mil habitantes | `src/history-analyses.js`, `data/reference/population.json` |
+| Economia | Selos dado oficial / análise / projeção | `src/scenarios.js` |
+| Dados e metodologia | Como confiar nestes números | `src/trust-guide.*` |
+
+`data/history/` (soma mensal dos cubos, gerada por `scripts/build-history.py`) alimenta as análises de longo prazo sem baixar 129 cubos no navegador.
+
 ## Documentação histórica
 
 Os relatórios e manifestos dos pacotes anteriores estão em `docs/historico/`.
@@ -81,6 +105,8 @@ Os relatórios e manifestos dos pacotes anteriores estão em `docs/historico/`.
 ---
 
 ## Notas técnicas herdadas
+
+> Os comandos `python scripts/build-*.py` citados abaixo são históricos e hoje se recusam a rodar. Use `python3 scripts/build.py` e `bash scripts/test.sh`.
 
 Static dashboard published by the existing GitHub → Cloudflare Pages integration.
 `index.html` contains the reviewed snapshot, bundled runtime and authored application.

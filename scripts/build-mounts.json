@@ -42,5 +42,9 @@
  [
   "jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})",
   "jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})\n   , tab==='geography'&&mapReady&&jsxRuntime.jsx(PenetrationMap,{filters:effectiveFilters,base:getBase(snapshot)})"
+ ],
+ [
+  "tab==='quality'?jsxRuntime.jsx(QualityView, { manifest: manifest,})",
+  "tab==='quality'?jsxRuntime.jsxs(jsxRuntime.Fragment,{children:[jsxRuntime.jsx(TrustGuide,{manifest}),jsxRuntime.jsx(QualityView, { manifest: manifest,})]})"
  ]
 ]

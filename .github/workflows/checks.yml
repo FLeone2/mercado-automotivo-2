@@ -1,0 +1,20 @@
+# Roda todos os testes e o build de publicação a cada push e pull request.
+name: Verificações
+on:
+  push:
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r scripts/requirements-scenarios.txt
+      - run: bash scripts/test.sh
+      - run: bash scripts/build-dist.sh

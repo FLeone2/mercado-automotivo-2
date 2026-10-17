@@ -29,7 +29,9 @@ function catalogBubbleRadius(value,max,radius=42){return max>0?Math.sqrt(Math.ma
 function catalogColorMap(names,dimension='marca'){
  const map=new Map(),used=new Set(),list=[...new Set(names.filter(n=>n!==undefined&&n!==null).map(catalogLabel))];
  for(const n of list){const known=typeof brandColorKnown==='function'&&brandColorKnown(n)||dimension==='modelo'&&typeof isMitsubishiModel==='function'&&isMitsubishiModel(n);if(!known)continue;const c=catalogColor(n,dimension);map.set(n,c);const m=/--brand-(\d+)/.exec(c);if(m)used.add(Number(m[1]));}
- let next=1;for(const n of list){if(map.has(n))continue;let guard=0;while(used.has(next)&&guard++<12)next=next%12+1;map.set(n,'var(--brand-'+next+')');used.add(next);next=next%12+1;}
+ // Twelve identity colours at most: once they are taken, the rest (and Outros) share a neutral grey
+ // and are told apart by their direct labels and the tooltip, never by a recycled colour.
+ let next=1;for(const n of list){if(map.has(n))continue;if(/^(outros|não informado|nao informado)$/i.test(n)||used.size>=12){map.set(n,'var(--chart-8)');continue;}let guard=0;while(used.has(next)&&guard++<12)next=next%12+1;map.set(n,'var(--brand-'+next+')');used.add(next);next=next%12+1;}
  return map;
 }
 // Vertical label positions pushed apart so neighbouring names never overlap.

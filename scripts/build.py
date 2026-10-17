@@ -45,6 +45,7 @@ MODULES = [
     ('MARKET PULSE', ['market-pulse.js']),
     ('EXPORT TOOLS', ['export-tools.js']),
     ('HISTORY ANALYSES', ['history-analyses.js']),
+    ('TRUST GUIDE', ['trust-guide.js']),
 ]
 # style id -> source stylesheet ('overview-clean-styles' has no source and is left as is).
 STYLES = {
@@ -63,6 +64,7 @@ STYLES = {
     'market-pulse-styles': 'market-pulse.css',
     'export-tools-styles': 'export-tools.css',
     'history-analyses-styles': 'history-analyses.css',
+    'trust-guide-styles': 'trust-guide.css',
 }
 # New modules added after the reformulation register here too (see EXTRA_MODULES below).
 EXTRA_MODULES = []   # (marker, [files], style id or None, css file or None)

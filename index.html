@@ -714,8 +714,8 @@ i.ctx-reg{background:var(--chart-1)}i.ctx-credit{background:var(--chart-2)}
 <style id="export-tools-styles">
 /* Baixar PNG: a quiet button in the corner of each exportable chart. */
 [data-export-root]{position:relative}
-.export-image-button{position:absolute;top:0;right:0;z-index:2;min-height:30px;padding:4px 10px;border:1px solid var(--border);border-radius:8px;background:var(--control);color:var(--secondary);font:500 12px var(--font-sans);cursor:pointer;opacity:.85;transition:opacity .15s,background-color .15s}
-.export-image-button:hover,.export-image-button:focus-visible{opacity:1;background:var(--control-hover);color:var(--text)}
+.export-image-button{position:absolute;top:0;right:0;z-index:2;min-height:30px;padding:4px 10px;border:1px solid var(--border);border-radius:8px;background:var(--control);color:var(--secondary);font:500 12px var(--font-sans);cursor:pointer;transition:background-color .15s}
+.export-image-button:hover,.export-image-button:focus-visible{background:var(--control-hover);color:var(--text)}
 .ac-bubbles>.export-image-button{top:4px}
 .tbm-card>.export-image-button{top:12px;right:12px}
 .print-header{display:none}
@@ -795,6 +795,18 @@ i.ctx-reg{background:var(--chart-1)}i.ctx-credit{background:var(--chart-2)}
 .hx-cap{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 6px;font-size:14px;font-weight:600;color:var(--text)}
 .hx-cap .export-image-button{position:static}
 .hx-legend.hx-legend-export{display:none}
+</style>
+<style id="trust-guide-styles">
+/* Como confiar nestes números (Dados e metodologia). */
+.tg{margin:8px 0 24px;display:flex;flex-direction:column;gap:12px}
+.tg-head h2{margin:0;font-size:clamp(19px,1.7vw,22px);font-weight:650;letter-spacing:-.01em}
+.tg-head p{margin:4px 0 0;font-size:14px;line-height:1.55;color:var(--secondary);max-width:80ch}
+.tg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:800px){.tg-grid{grid-template-columns:1fr}}
+.tg-card{padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.tg-card h3{margin:0 0 6px;font-size:15px;font-weight:600}
+.tg-card ul{margin:0;padding-left:18px;font-size:13px;line-height:1.6;color:var(--text)}
+.tg-card li+li{margin-top:4px}
 </style>
 <style id="design-system-styles">
 /* Design system: the single visual layer for the whole dashboard.
@@ -893,6 +905,8 @@ body,button,input,select,textarea,svg text{font-family:var(--font-sans) !importa
 :root .am-app :is(.am-small-button,.am-period-chip){border-radius:8px;border:1px solid var(--border);background:var(--control);color:var(--text);box-shadow:none;background-image:none;transition:background-color .15s,border-color .15s,color .15s}
 :root .am-app :is(.am-small-button,.am-period-chip):hover{background:var(--control-hover)}
 :root .am-app :is(.am-small-button.am-primary,.am-period-chip[aria-pressed=true]){background:var(--accent);border-color:var(--accent);color:var(--surface)}
+/* Text inside the active chip follows the chip (the runtime paints it white, unreadable on the light dark-mode accent). */
+:root .am-app :is(.am-small-button.am-primary,.am-period-chip[aria-pressed=true]) :is(strong,span,small){color:inherit}
 :root .data-segmented-control{border-radius:10px}
 :root .am-app :is(button,input,select,textarea,a,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
@@ -3594,7 +3608,9 @@ function catalogBubbleRadius(value,max,radius=42){return max>0?Math.sqrt(Math.ma
 function catalogColorMap(names,dimension='marca'){
  const map=new Map(),used=new Set(),list=[...new Set(names.filter(n=>n!==undefined&&n!==null).map(catalogLabel))];
  for(const n of list){const known=typeof brandColorKnown==='function'&&brandColorKnown(n)||dimension==='modelo'&&typeof isMitsubishiModel==='function'&&isMitsubishiModel(n);if(!known)continue;const c=catalogColor(n,dimension);map.set(n,c);const m=/--brand-(\d+)/.exec(c);if(m)used.add(Number(m[1]));}
- let next=1;for(const n of list){if(map.has(n))continue;let guard=0;while(used.has(next)&&guard++<12)next=next%12+1;map.set(n,'var(--brand-'+next+')');used.add(next);next=next%12+1;}
+ // Twelve identity colours at most: once they are taken, the rest (and Outros) share a neutral grey
+ // and are told apart by their direct labels and the tooltip, never by a recycled colour.
+ let next=1;for(const n of list){if(map.has(n))continue;if(/^(outros|não informado|nao informado)$/i.test(n)||used.size>=12){map.set(n,'var(--chart-8)');continue;}let guard=0;while(used.has(next)&&guard++<12)next=next%12+1;map.set(n,'var(--brand-'+next+')');used.add(next);next=next%12+1;}
  return map;
 }
 // Vertical label positions pushed apart so neighbouring names never overlap.
@@ -3863,7 +3879,7 @@ function catalogAdapt(c,type,{dimension='marca',measure='units',limit=12,search=
 }
 function CatalogPanel({model,tab,filters,scope,dataBase,setFilter}){
  const choices=CATALOG_AREAS[tab]??CATALOG_AREAS.explore;
- const [selected,setSelected]=React.useState(choices[0]),[dimension,setDimension]=React.useState(tab==='geography'?'municipio':'marca'),[measure,setMeasure]=React.useState('units'),[limit,setLimit]=React.useState(12),[search,setSearch]=React.useState(''),[highlights,setHighlights]=React.useState(['MITSUBISHI']);
+ const [selected,setSelected]=React.useState(choices[0]),[dimension,setDimension]=React.useState(tab==='geography'?'municipio':'marca'),[measure,setMeasure]=React.useState('units'),[limit,setLimit]=React.useState(()=>globalThis.matchMedia?.('(max-width: 600px)')?.matches?6:12),[search,setSearch]=React.useState(''),[highlights,setHighlights]=React.useState(['MITSUBISHI']);
  const type=choices.includes(selected)?selected:choices[0],c=model.catalog,dimensions=catalogDimensions(c,type),dimensionAllowed=dimensions.includes(dimension)?dimension:dimensions[0]??'marca';
  const adjustable=['bump','slope','dumbbell','diverging','bubble'].includes(type),groupable=adjustable||type==='pareto',activeSearch=adjustable?search:'',activeHighlights=dimensionAllowed==='marca'?highlights:[],result=catalogAdapt(c,type,{dimension:dimensionAllowed,measure,limit,search:activeSearch,highlights:activeHighlights});
  const displayNames=type==='bump'?catalogBumpNames(result.rows,{limit,search,highlights:activeHighlights}):undefined;
@@ -4934,7 +4950,7 @@ function TopThreeMap({tops,states}){
      if(i)stops.push(h('stop',{offset:acc-gap/2,stopColor:'var(--surface)'},'s'+i),h('stop',{offset:a,stopColor:'var(--surface)'},'t'+i));
      stops.push(h('stop',{offset:a,stopColor:c,stopOpacity:o},'a'+i),h('stop',{offset:z,stopColor:c,stopOpacity:o},'z'+i));acc+=w;});
     return h('linearGradient',{id:id+'-g-'+s.uf,children:stops},s.uf);})]}),
-  ...ufs.map(s=>h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(s.uf,pos,id),tabIndex:small?-1:0,'aria-label':TBM_UF_NAMES[s.uf]+': '+tops.get(s.uf).top.map(x=>tbmName(x.b)+' '+tbmPct(x.s)).join(', '),
+  ...ufs.map(s=>h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(s.uf,pos,id),tabIndex:small?-1:0,role:'img','aria-label':TBM_UF_NAMES[s.uf]+': '+tops.get(s.uf).top.map(x=>tbmName(x.b)+' '+tbmPct(x.s)).join(', '),
    onMouseMove:e=>enter(s.uf,e),onMouseLeave:leave,onFocus:e=>{const r=e.currentTarget.getBoundingClientRect();enter(s.uf,{clientX:r.right,clientY:r.top});},onBlur:leave},s.uf)),
   ...ufs.map(s=>{const lead=tops.get(s.uf).top[pos??0]?.b;return lead&&!tbmKnown(lead)?h('text',{x:s.cx,y:s.cy+3,className:'tbm-label',children:tbmName(lead)},'l'+s.uf):null;})]});
  const rows=[...ufs].sort((a,b)=>tops.get(b.uf).total-tops.get(a.uf).total);
@@ -4946,7 +4962,7 @@ function TopThreeMap({tops,states}){
   hs('div',{className:'tbm-legend',children:legendBrands.map(b=>hs('span',{children:[h('i',{style:{background:tbmColor(b)}}),tbmName(b)]},b)).concat(hasOther?[hs('span',{children:[h('i',{className:'tbm-hatch'}),'Outras marcas (nome no mapa e na lista)']},'o')]:[])}),
   hs('div',{className:'tbm-top3',children:[
    h('div',{className:'tbm-fade',children:mode==='bands'?map('tbmb',null,false):h('div',{className:'tbm-multi',children:[0,1,2].map(i=>hs('figure',{children:[h('figcaption',{children:(i+1)+'º lugar'}),map('tbmm'+i,i,true)]},i))})},mode),
-   hs('div',{className:'tbm-rank',role:'list','aria-label':'Três primeiras marcas por estado',children:rows.map(s=>{const e=tops.get(s.uf);return hs('div',{role:'listitem',className:'tbm-row'+(hover===s.uf?' is-hl':''),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),children:[
+   hs('div',{className:'tbm-rank',role:'list',tabIndex:0,'aria-label':'Três primeiras marcas por estado',children:rows.map(s=>{const e=tops.get(s.uf);return hs('div',{role:'listitem',className:'tbm-row'+(hover===s.uf?' is-hl':''),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),children:[
     h('b',{children:s.uf}),h('span',{className:'tbm-stack',children:e.top.map(x=>h('span',{className:tbmKnown(x.b)?'':'tbm-hatch',style:{width:(x.s*100).toFixed(1)+'%',background:tbmKnown(x.b)?tbmColor(x.b):undefined},title:tbmName(x.b)+' '+tbmPct(x.s)},x.b))}),
     h('span',{className:'tbm-names',children:e.top.map(x=>tbmName(x.b)).join(' · ')})]},s.uf);})})]}),
   tip&&h('div',{className:'tbm-tip',style:{left:tip.x+14,top:tip.y+14},children:tipFor(tip.uf)})]});
@@ -4966,7 +4982,7 @@ function BrandStrengthMap({result,states}){
    hs('label',{className:'tbm-range',children:['Marca',h('select',{value:chosen,onChange:e=>setBrand(e.target.value),'aria-label':'Marca',children:brands.map(b=>h('option',{value:b,children:tbmName(b)},b))})]})]}),
   hs('div',{className:'tbm-strength',children:[
    hs('svg',{viewBox:value$3.viewBox,className:'tbm-svg',role:'img','aria-label':'Força de '+tbmName(chosen)+' por estado',children:[
-    ...states.map(s=>{const r=data.rows.get(s.uf);return h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(r),tabIndex:0,'aria-label':TBM_UF_NAMES[s.uf]+': índice '+(r?Math.round(r.index):'—'),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),onFocus:()=>setHover(s.uf),onBlur:()=>setHover(null)},s.uf);}),
+    ...states.map(s=>{const r=data.rows.get(s.uf);return h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(r),tabIndex:0,role:'img','aria-label':TBM_UF_NAMES[s.uf]+': índice '+(r?Math.round(r.index):'—'),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),onFocus:()=>setHover(s.uf),onBlur:()=>setHover(null)},s.uf);}),
     ...states.map(s=>{const r=data.rows.get(s.uf);return r&&Math.abs(r.index-100)>=25?h('text',{x:s.cx,y:s.cy+3,className:'tbm-label',children:Math.round(r.index)},'l'+s.uf):null;})]}),
    hs('div',{className:'tbm-strength-side',children:[
     h('div',{className:'tbm-scale','aria-hidden':true}),hs('div',{className:'tbm-scale-labels',children:[h('span',{children:'40'}),h('span',{children:'100 = Brasil'}),h('span',{children:'160+'})]}),
@@ -5183,7 +5199,7 @@ function CrMatrix({matrix}){
    h('text',{x:W-R-4,y:H-B-6,textAnchor:'end',className:'cr-q cr-q-opp',children:'Oportunidade'}),
    h('text',{x:L+6,y:T+12,className:'cr-q',children:'Nicho'}),
    ...matrix.rows.map(r=>hs('g',{className:'cr-point cr-'+crQuadrant(r,matrix)+(hover===r.uf?' is-hover':''),tabIndex:0,'aria-label':r.uf+': segmento '+crInt(r.total)+', Mitsubishi '+crPct(r.share),onMouseEnter:()=>setHover(r.uf),onMouseLeave:()=>setHover(null),onFocus:()=>setHover(r.uf),onBlur:()=>setHover(null),children:[
-    h('circle',{cx:x(r.total),cy:y(r.share),r:5}),h('text',{x:x(r.total)+7,y:y(r.share)+3,children:r.uf})]},r.uf))]}),
+    h('circle',{cx:x(r.total),cy:y(r.share),r:5}),h('text',{x:x(r.total)>W-R-34?x(r.total)-8:x(r.total)+7,y:y(r.share)+3,textAnchor:x(r.total)>W-R-34?'end':'start',children:r.uf})]},r.uf))]}),
   h('p',{className:'cr-readout',role:'status',children:hr?hr.uf+': '+crInt(hr.total)+' emplacamentos no segmento, Mitsubishi com '+crInt(hr.mit)+' ('+crPct(hr.share)+'). '+CR_QUADRANTS[crQuadrant(hr,matrix)]+'.':'Linhas tracejadas: medianas entre as UFs. Passe o mouse ou use Tab sobre uma UF.'})]});
 }
 function CrConcentration(){
@@ -5762,6 +5778,31 @@ function PenetrationMap({filters,base}){
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={hxRhythmModel,hxDecomposition,hxGroupStats,hxPeriodMonths,hxMedian,hxNorm};
 // END HISTORY ANALYSES
+// BEGIN TRUST GUIDE
+// "Como confiar nestes números": the first block of Dados e metodologia. Everything
+// it states comes from the data manifest or from checks the repository runs.
+const TRUST_MONTHS=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const trustMonth=m=>m?TRUST_MONTHS[+String(m).slice(5,7)-1]+'/'+String(m).slice(0,4):'—';
+function trustFacts(manifest){
+ const months=[...(manifest?.months??[])].sort((a,b)=>a.month<b.month?-1:1),channel=months.find(m=>(m.channelSourceFields??[]).length>0),bd=manifest?.bdClassification??{};
+ const repeated=manifest?.totals?.repeated_plate_excess_rows??null,rows=manifest?.totals?.eligible_rows??manifest?.totals?.rows??null;
+ return {start:manifest?.coverageStart,end:manifest?.coverageEnd,months:months.length,rows,generated:manifest?.generatedAt?new Date(manifest.generatedAt).toLocaleDateString('pt-BR'):'—',missing:manifest?.missingMonths??[],quarantined:manifest?.quarantinedSources??[],channelFrom:channel?.month??null,repeated,verified:manifest?.sourceAvailability?.verifiedDownloads??null,expected:manifest?.sourceAvailability?.expectedSourceFiles??null,bdJoin:bd.join??null,bdMonths:(bd.coveredMonths??[]).length};
+}
+function TrustGuide({manifest}){
+ const h=jsxRuntime.jsx,hs=jsxRuntime.jsxs,f=trustFacts(manifest),n=v=>v==null?'—':new Intl.NumberFormat('pt-BR').format(v);
+ const card=(title,items)=>hs('article',{className:'tg-card',children:[h('h3',{children:title}),h('ul',{children:items.filter(Boolean).map((t,i)=>h('li',{children:t},i))})]},title);
+ return hs('section',{className:'tg','aria-labelledby':'tg-title',children:[
+  hs('header',{className:'tg-head',children:[h('h2',{id:'tg-title',children:'Como confiar nestes números'}),h('p',{children:'De onde vêm os dados, o que cada indicador mede (e o que não mede) e como o painel é conferido. Base atualizada em '+f.generated+', com dados de '+trustMonth(f.start)+' a '+trustMonth(f.end)+'.'})]}),
+  hs('div',{className:'tg-grid',children:[
+   card('De onde vêm',[n(f.months)+' planilhas mensais de emplacamentos de automóveis e comerciais leves, uma por mês, sem mês faltando'+(f.missing.length?' (exceto '+f.missing.join(', ')+')':'')+'.',n(f.rows)+' registros no total; cada linha da fonte conta uma vez.',f.verified!=null?n(f.verified)+' de '+n(f.expected)+' arquivos de origem conferidos no download.':null,'Economia usa séries oficiais do Banco Central e população do IBGE, com a fonte em cada número.']),
+   card('O que os números medem',['Emplacamento é o registro de um veículo novo, na data do registro. Não é venda faturada nem frota em circulação.','Participação = parte do recorte escolhido nos filtros; mudar os filtros muda o universo.','Variação anual compara com o mesmo período do ano anterior. Ritmo por dia útil divide pelos dias úteis (sem fins de semana, feriados nacionais, Carnaval e Corpus Christi).','O local é o município de registro, não necessariamente o de uso: locadoras concentram registros em poucas cidades.']),
+   card('O que não medem',['Preço, desconto, estoque e vendas no atacado.','Veículos usados, motos, caminhões e ônibus (fora do universo).',f.channelFrom?'Canal de venda (venda direta × varejo) só existe a partir de '+trustMonth(f.channelFrom)+'; antes disso aparece como não informado.':'Canal de venda quando a fonte não informa.','Projeções e simulações da Economia são modelos, marcados como tal; não são dados observados.']),
+   card('Como o painel é conferido',['Nada é deduplicado automaticamente'+(f.repeated!=null?': '+n(f.repeated)+' placas repetidas em '+n(f.rows)+' registros ficam como na fonte':'')+'. Datas inválidas ou fora do mês ficam fora das contas.',f.bdJoin?'Classificação de porte, carroceria e tecnologia pelo código exato do modelo, sem correspondência aproximada ('+n(f.bdMonths)+' meses cobertos).':null,'Testes automáticos conferem os totais mensais contra os arquivos, o histórico de 10 anos contra os mesmos arquivos, e travam qualquer alteração nos dados feita por mudança de visual.','Cada área é revisada em claro, escuro e celular antes de publicar.'])
+  ]})
+ ]});
+}
+if(typeof module!=='undefined'&&module.exports)module.exports={trustFacts,trustMonth};
+// END TRUST GUIDE
 function useMarketData(filters,enabled,mode,reportBusy=true){const shell=dataApp.useDataApp();const [manifest,setManifest]=React.useState(null),[manifestError,setManifestError]=React.useState(null),[state,setState]=React.useState({result:null,pending:true,progress:null,error:null,key:null});const worker=React.useRef(null),sequence=React.useRef(0),activeRequest=React.useRef(null);
  const includeInteractive=mode==='interactive'||mode==='interactive-daily',includeDaily=mode==='interactive-daily';
  const signature=canonicalFilterKey(filters),includeCatalog=['catalog','primary-map'].includes(mode),includeMarketBaseline=['technology','origin'].includes(mode),includeHistoryComparisons=mode==='history',includeChannelReference=['geography','primary-map'].includes(mode),includeOriginAnalysis=mode==='origin',includeMitsubishiProfile=['competition','ranking','segments'].includes(mode),base=getBase(shell.snapshot),requestKey=React.useMemo(()=>({includeInteractive,includeDaily,manifest,signature,base,includeMarketBaseline,includeHistoryComparisons,includeChannelReference,includeOriginAnalysis,includeMitsubishiProfile,includeCatalog}),[includeInteractive,includeDaily,manifest,signature,base,includeMarketBaseline,includeHistoryComparisons,includeChannelReference,includeOriginAnalysis,includeMitsubishiProfile,includeCatalog]);
@@ -5841,7 +5882,7 @@ function DashboardContent(){
   , tab==='geography'&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending,error:overviewMapQuery.error,ready:Boolean(overviewMapModel),compatibilityKey:JSON.stringify(['independent-primary-map',tab,effectiveFilters.uf]),label:performanceFilterLabel(overviewMapFilters),children:jsxRuntime.jsx(PrimaryMap,{...(tab==='dashboard'?{id:'overview-map'}:{id:'territories-primary-map'}),model:overviewMapModel,filters:effectiveFilters,scope:overviewMapScope,dataBase:getBase(snapshot),setFilter:setPrimaryMapFilter,view:tab==='geography'?mapView:overviewMapView,setView:tab==='geography'?setMapView:setOverviewMapView,pending:overviewMapQuery.pending,error:overviewMapQuery.error})})
    , tab==='geography'&&mapReady&&jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})
    , tab==='geography'&&mapReady&&jsxRuntime.jsx(PenetrationMap,{filters:effectiveFilters,base:getBase(snapshot)})
-  , ['explore','structure'].includes(tab)?jsxRuntime.jsx(ExplorationView, { forcedView:tab==='structure'?'structure':null, onRankingRestore:setRankingControls, favoriteDefinitions: activeDefinitions, favoriteChoiceRows: liveChoices, manifest: manifest, manifestError: manifestError, filters: effectiveFilters, scope: scope, base: getBase(snapshot), highlightMitsubishi: highlightMitsubishi, onHighlightMitsubishi: setHighlightMitsubishi,}):tab==='models'?jsxRuntime.jsx(ScenarioWorkspace, { activeManifest: manifest, activeManifestVerified: Boolean(manifest)&&!manifestError, filters: effectiveFilters, scope: scope, base: getBase(snapshot), highlightMitsubishi: highlightMitsubishi, onHighlightMitsubishi: setHighlightMitsubishi,}):tab==='quality'?jsxRuntime.jsx(QualityView, { manifest: manifest,}):jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+  , ['explore','structure'].includes(tab)?jsxRuntime.jsx(ExplorationView, { forcedView:tab==='structure'?'structure':null, onRankingRestore:setRankingControls, favoriteDefinitions: activeDefinitions, favoriteChoiceRows: liveChoices, manifest: manifest, manifestError: manifestError, filters: effectiveFilters, scope: scope, base: getBase(snapshot), highlightMitsubishi: highlightMitsubishi, onHighlightMitsubishi: setHighlightMitsubishi,}):tab==='models'?jsxRuntime.jsx(ScenarioWorkspace, { activeManifest: manifest, activeManifestVerified: Boolean(manifest)&&!manifestError, filters: effectiveFilters, scope: scope, base: getBase(snapshot), highlightMitsubishi: highlightMitsubishi, onHighlightMitsubishi: setHighlightMitsubishi,}):tab==='quality'?jsxRuntime.jsxs(jsxRuntime.Fragment,{children:[jsxRuntime.jsx(TrustGuide,{manifest}),jsxRuntime.jsx(QualityView, { manifest: manifest,})]}):jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
    mixedScope&&jsxRuntime.jsxs('div', { className: "am-scope-alert", children: [jsxRuntime.jsx('span', { children: "!"}), jsxRuntime.jsx('p', { children: "Os arquivos deste período têm conjuntos de segmentos diferentes. Selecione um segmento comum para comparar a série. O total geral reúne apenas os segmentos observados em cada arquivo."                           })]})
    , tab==='animations'?jsxRuntime.jsx(AnimationWorkspace,{manifest,filters:effectiveFilters,scope}):/* BEGIN MAIN CHART SNAPSHOT */jsxRuntime.jsx(PendingChartSnapshot,{pending,error,ready:mapReady&&Boolean(model),compatibilityKey:JSON.stringify([tab,evolutionView,mapView,overviewMapView,grain,manifest?.schemaVersion]),label:performanceFilterLabel(effectiveFilters),children:!mapReady?jsxRuntime.jsxs('div', { className: "am-map-pending", role: "status", children: [jsxRuntime.jsx('strong', { children: "Escolha uma opção para cada filtro do mapa"       }), jsxRuntime.jsxs('p', { children: ["Há múltiplas seleções nas outras abas: "      , (mapContext?.pending??[]).map(item=>(LABELS$1[item.field]??item.field)+': '+item.values.join(', ')).join(' · '), ". Selecione uma opção nos controles acima ou use Todos explicitamente."          ]}), jsxRuntime.jsx('button', { className: "am-small-button", onClick: ()=>setMapContext(acceptAllPending(mapContext??createMapContext(globalFilters))), children: "Usar Todos nesses filtros"   })]}):pending?jsxRuntime.jsxs('div', { className: "am-loading", role: "status", children: [jsxRuntime.jsx('span', { className: "am-spinner",}), jsxRuntime.jsx('strong', { children: "Preparando o recorte"  }), jsxRuntime.jsxs('span', { children: ["Consultando os meses do recorte e das comparações"       , progress?` · ${progress.done} de ${progress.total}`:'', "."]}), jsxRuntime.jsx('p', { children: "Os totais aparecem quando todos os arquivos do recorte estiverem prontos."          }), manifest&&listMonths(rangeFrom(effectiveFilters.date,manifest)).length>12&&jsxRuntime.jsx('p', { children: "Consultas de vários anos podem levar alguns minutos e usar mais memória. Para explorar todo o histórico, prefira um computador e mantenha esta aba aberta. Você pode reduzir o período para acelerar."                               })]}):error?jsxRuntime.jsx(Empty, { title: "Recorte indisponível" , detail: error,}):!model?jsxRuntime.jsx(Empty, { title: "Base em preparação"  , detail: "Os arquivos revisados ainda não estão disponíveis neste ambiente."        ,}):model.total===null&&model.channelUnavailableMonths?.length&&tab!=='geography'?jsxRuntime.jsx(Empty, { title: "Canal VD/Varejo não informado neste período"     , detail: "Os arquivos estão presentes, mas não informam o canal selecionado. O volume permanece indisponível, não zero. Selecione janeiro de 2018 em diante ou remova o filtro de canal."                           ,}):jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
     model.observationClipped&&jsxRuntime.jsxs('div', { className: "am-scope-alert", children: [jsxRuntime.jsx('span', { children: "i"}), jsxRuntime.jsxs('p', { children: ["Dados observados até "   , dateLabel(model.range.end), ". A análise e a comparação usam somente esse intervalo; os dias seguintes não são tratados como zero."                 ]})]}), model.channelUnavailableMonths?.length>0&&jsxRuntime.jsxs('div', { className: "am-scope-alert", role: "status", children: [jsxRuntime.jsx('span', { children: "!"}), jsxRuntime.jsxs('p', { children: [jsxRuntime.jsxs('strong', { children: ["Canal VD/Varejo indisponível em "    , model.channelUnavailableMonths.length, " mês(es)." ]}), " A fonte desses meses não informa o canal. Os pontos permanecem como lacunas; o total é indisponível quando nenhum mês tem informação, ou parcial quando há meses conhecidos. Ausência de canal não é zero emplacamento."                                   ]})]}), (model.missingMonths.length+(model.incompleteMonths?.length??0)>0)&&jsxRuntime.jsxs('div', { className: "am-scope-alert", children: [jsxRuntime.jsx('span', { children: "!"}), jsxRuntime.jsxs('p', { children: ["Cobertura parcial: "  , model.missingMonths.length, " mês(es) ausente(s) e "    , model.incompleteMonths?.length??0, " com cobertura incompleta ou não declarada. O total reúne os registros observados; os intervalos sem cobertura confirmada e suas comparações permanecem indisponíveis."                      ]})]}), jsxRuntime.jsxs('div', { className: "am-period-line", children: [jsxRuntime.jsx('span', { children: titlePeriod}), jsxRuntime.jsxs('span', { children: [model.coverage.length, " " , model.coverage.length===1?'arquivo mensal':'arquivos mensais', " · "  , effectiveFilters.population==='light'?'Automóveis + comerciais leves':'Todo o conteúdo dos arquivos']})]})

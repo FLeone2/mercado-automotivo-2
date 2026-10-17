@@ -1,7 +1,7 @@
 /* Baixar PNG: a quiet button in the corner of each exportable chart. */
 [data-export-root]{position:relative}
-.export-image-button{position:absolute;top:0;right:0;z-index:2;min-height:30px;padding:4px 10px;border:1px solid var(--border);border-radius:8px;background:var(--control);color:var(--secondary);font:500 12px var(--font-sans);cursor:pointer;opacity:.85;transition:opacity .15s,background-color .15s}
-.export-image-button:hover,.export-image-button:focus-visible{opacity:1;background:var(--control-hover);color:var(--text)}
+.export-image-button{position:absolute;top:0;right:0;z-index:2;min-height:30px;padding:4px 10px;border:1px solid var(--border);border-radius:8px;background:var(--control);color:var(--secondary);font:500 12px var(--font-sans);cursor:pointer;transition:background-color .15s}
+.export-image-button:hover,.export-image-button:focus-visible{background:var(--control-hover);color:var(--text)}
 .ac-bubbles>.export-image-button{top:4px}
 .tbm-card>.export-image-button{top:12px;right:12px}
 .print-header{display:none}

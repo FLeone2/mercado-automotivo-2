@@ -53,7 +53,7 @@ function CrMatrix({matrix}){
    h('text',{x:W-R-4,y:H-B-6,textAnchor:'end',className:'cr-q cr-q-opp',children:'Oportunidade'}),
    h('text',{x:L+6,y:T+12,className:'cr-q',children:'Nicho'}),
    ...matrix.rows.map(r=>hs('g',{className:'cr-point cr-'+crQuadrant(r,matrix)+(hover===r.uf?' is-hover':''),tabIndex:0,'aria-label':r.uf+': segmento '+crInt(r.total)+', Mitsubishi '+crPct(r.share),onMouseEnter:()=>setHover(r.uf),onMouseLeave:()=>setHover(null),onFocus:()=>setHover(r.uf),onBlur:()=>setHover(null),children:[
-    h('circle',{cx:x(r.total),cy:y(r.share),r:5}),h('text',{x:x(r.total)+7,y:y(r.share)+3,children:r.uf})]},r.uf))]}),
+    h('circle',{cx:x(r.total),cy:y(r.share),r:5}),h('text',{x:x(r.total)>W-R-34?x(r.total)-8:x(r.total)+7,y:y(r.share)+3,textAnchor:x(r.total)>W-R-34?'end':'start',children:r.uf})]},r.uf))]}),
   h('p',{className:'cr-readout',role:'status',children:hr?hr.uf+': '+crInt(hr.total)+' emplacamentos no segmento, Mitsubishi com '+crInt(hr.mit)+' ('+crPct(hr.share)+'). '+CR_QUADRANTS[crQuadrant(hr,matrix)]+'.':'Linhas tracejadas: medianas entre as UFs. Passe o mouse ou use Tab sobre uma UF.'})]});
 }
 function CrConcentration(){

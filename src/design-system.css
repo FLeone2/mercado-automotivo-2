@@ -94,6 +94,8 @@ body,button,input,select,textarea,svg text{font-family:var(--font-sans) !importa
 :root .am-app :is(.am-small-button,.am-period-chip){border-radius:8px;border:1px solid var(--border);background:var(--control);color:var(--text);box-shadow:none;background-image:none;transition:background-color .15s,border-color .15s,color .15s}
 :root .am-app :is(.am-small-button,.am-period-chip):hover{background:var(--control-hover)}
 :root .am-app :is(.am-small-button.am-primary,.am-period-chip[aria-pressed=true]){background:var(--accent);border-color:var(--accent);color:var(--surface)}
+/* Text inside the active chip follows the chip (the runtime paints it white, unreadable on the light dark-mode accent). */
+:root .am-app :is(.am-small-button.am-primary,.am-period-chip[aria-pressed=true]) :is(strong,span,small){color:inherit}
 :root .data-segmented-control{border-radius:10px}
 :root .am-app :is(button,input,select,textarea,a,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 

@@ -122,7 +122,7 @@ function TopThreeMap({tops,states}){
      if(i)stops.push(h('stop',{offset:acc-gap/2,stopColor:'var(--surface)'},'s'+i),h('stop',{offset:a,stopColor:'var(--surface)'},'t'+i));
      stops.push(h('stop',{offset:a,stopColor:c,stopOpacity:o},'a'+i),h('stop',{offset:z,stopColor:c,stopOpacity:o},'z'+i));acc+=w;});
     return h('linearGradient',{id:id+'-g-'+s.uf,children:stops},s.uf);})]}),
-  ...ufs.map(s=>h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(s.uf,pos,id),tabIndex:small?-1:0,'aria-label':TBM_UF_NAMES[s.uf]+': '+tops.get(s.uf).top.map(x=>tbmName(x.b)+' '+tbmPct(x.s)).join(', '),
+  ...ufs.map(s=>h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(s.uf,pos,id),tabIndex:small?-1:0,role:'img','aria-label':TBM_UF_NAMES[s.uf]+': '+tops.get(s.uf).top.map(x=>tbmName(x.b)+' '+tbmPct(x.s)).join(', '),
    onMouseMove:e=>enter(s.uf,e),onMouseLeave:leave,onFocus:e=>{const r=e.currentTarget.getBoundingClientRect();enter(s.uf,{clientX:r.right,clientY:r.top});},onBlur:leave},s.uf)),
   ...ufs.map(s=>{const lead=tops.get(s.uf).top[pos??0]?.b;return lead&&!tbmKnown(lead)?h('text',{x:s.cx,y:s.cy+3,className:'tbm-label',children:tbmName(lead)},'l'+s.uf):null;})]});
  const rows=[...ufs].sort((a,b)=>tops.get(b.uf).total-tops.get(a.uf).total);
@@ -134,7 +134,7 @@ function TopThreeMap({tops,states}){
   hs('div',{className:'tbm-legend',children:legendBrands.map(b=>hs('span',{children:[h('i',{style:{background:tbmColor(b)}}),tbmName(b)]},b)).concat(hasOther?[hs('span',{children:[h('i',{className:'tbm-hatch'}),'Outras marcas (nome no mapa e na lista)']},'o')]:[])}),
   hs('div',{className:'tbm-top3',children:[
    h('div',{className:'tbm-fade',children:mode==='bands'?map('tbmb',null,false):h('div',{className:'tbm-multi',children:[0,1,2].map(i=>hs('figure',{children:[h('figcaption',{children:(i+1)+'º lugar'}),map('tbmm'+i,i,true)]},i))})},mode),
-   hs('div',{className:'tbm-rank',role:'list','aria-label':'Três primeiras marcas por estado',children:rows.map(s=>{const e=tops.get(s.uf);return hs('div',{role:'listitem',className:'tbm-row'+(hover===s.uf?' is-hl':''),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),children:[
+   hs('div',{className:'tbm-rank',role:'list',tabIndex:0,'aria-label':'Três primeiras marcas por estado',children:rows.map(s=>{const e=tops.get(s.uf);return hs('div',{role:'listitem',className:'tbm-row'+(hover===s.uf?' is-hl':''),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),children:[
     h('b',{children:s.uf}),h('span',{className:'tbm-stack',children:e.top.map(x=>h('span',{className:tbmKnown(x.b)?'':'tbm-hatch',style:{width:(x.s*100).toFixed(1)+'%',background:tbmKnown(x.b)?tbmColor(x.b):undefined},title:tbmName(x.b)+' '+tbmPct(x.s)},x.b))}),
     h('span',{className:'tbm-names',children:e.top.map(x=>tbmName(x.b)).join(' · ')})]},s.uf);})})]}),
   tip&&h('div',{className:'tbm-tip',style:{left:tip.x+14,top:tip.y+14},children:tipFor(tip.uf)})]});
@@ -154,7 +154,7 @@ function BrandStrengthMap({result,states}){
    hs('label',{className:'tbm-range',children:['Marca',h('select',{value:chosen,onChange:e=>setBrand(e.target.value),'aria-label':'Marca',children:brands.map(b=>h('option',{value:b,children:tbmName(b)},b))})]})]}),
   hs('div',{className:'tbm-strength',children:[
    hs('svg',{viewBox:value$3.viewBox,className:'tbm-svg',role:'img','aria-label':'Força de '+tbmName(chosen)+' por estado',children:[
-    ...states.map(s=>{const r=data.rows.get(s.uf);return h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(r),tabIndex:0,'aria-label':TBM_UF_NAMES[s.uf]+': índice '+(r?Math.round(r.index):'—'),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),onFocus:()=>setHover(s.uf),onBlur:()=>setHover(null)},s.uf);}),
+    ...states.map(s=>{const r=data.rows.get(s.uf);return h('path',{d:s.d,className:'tbm-state'+(hover&&hover!==s.uf?' is-dim':''),fill:fill(r),tabIndex:0,role:'img','aria-label':TBM_UF_NAMES[s.uf]+': índice '+(r?Math.round(r.index):'—'),onMouseEnter:()=>setHover(s.uf),onMouseLeave:()=>setHover(null),onFocus:()=>setHover(s.uf),onBlur:()=>setHover(null)},s.uf);}),
     ...states.map(s=>{const r=data.rows.get(s.uf);return r&&Math.abs(r.index-100)>=25?h('text',{x:s.cx,y:s.cy+3,className:'tbm-label',children:Math.round(r.index)},'l'+s.uf):null;})]}),
    hs('div',{className:'tbm-strength-side',children:[
     h('div',{className:'tbm-scale','aria-hidden':true}),hs('div',{className:'tbm-scale-labels',children:[h('span',{children:'40'}),h('span',{children:'100 = Brasil'}),h('span',{children:'160+'})]}),

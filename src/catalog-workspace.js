@@ -57,7 +57,7 @@ function catalogAdapt(c,type,{dimension='marca',measure='units',limit=12,search=
 }
 function CatalogPanel({model,tab,filters,scope,dataBase,setFilter}){
  const choices=CATALOG_AREAS[tab]??CATALOG_AREAS.explore;
- const [selected,setSelected]=React.useState(choices[0]),[dimension,setDimension]=React.useState(tab==='geography'?'municipio':'marca'),[measure,setMeasure]=React.useState('units'),[limit,setLimit]=React.useState(12),[search,setSearch]=React.useState(''),[highlights,setHighlights]=React.useState(['MITSUBISHI']);
+ const [selected,setSelected]=React.useState(choices[0]),[dimension,setDimension]=React.useState(tab==='geography'?'municipio':'marca'),[measure,setMeasure]=React.useState('units'),[limit,setLimit]=React.useState(()=>globalThis.matchMedia?.('(max-width: 600px)')?.matches?6:12),[search,setSearch]=React.useState(''),[highlights,setHighlights]=React.useState(['MITSUBISHI']);
  const type=choices.includes(selected)?selected:choices[0],c=model.catalog,dimensions=catalogDimensions(c,type),dimensionAllowed=dimensions.includes(dimension)?dimension:dimensions[0]??'marca';
  const adjustable=['bump','slope','dumbbell','diverging','bubble'].includes(type),groupable=adjustable||type==='pareto',activeSearch=adjustable?search:'',activeHighlights=dimensionAllowed==='marca'?highlights:[],result=catalogAdapt(c,type,{dimension:dimensionAllowed,measure,limit,search:activeSearch,highlights:activeHighlights});
  const displayNames=type==='bump'?catalogBumpNames(result.rows,{limit,search,highlights:activeHighlights}):undefined;
