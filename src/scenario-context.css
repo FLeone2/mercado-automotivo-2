@@ -37,3 +37,10 @@ i.ctx-reg{background:var(--chart-1)}i.ctx-credit{background:var(--chart-2)}
 .ctx-source{margin:0;font-size:12px;color:var(--secondary)}
 .ctx-technical-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--secondary);margin-left:8px}
 @media(prefers-reduced-motion:reduce){.ctx-card{animation:none}}
+
+/* Selos: dado oficial, análise sobre dado oficial, projeção/modelo. */
+.ctx-label-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.sc-kind{display:inline-flex;align-items:center;min-height:20px;padding:1px 8px;border-radius:99px;font:600 11px var(--font-sans);letter-spacing:.01em;white-space:nowrap;vertical-align:middle;border:1px solid}
+.sc-kind-official{color:var(--positive);border-color:color-mix(in oklab,var(--positive) 45%,transparent);background:color-mix(in oklab,var(--positive) 10%,transparent)}
+.sc-kind-derived{color:var(--accent);border-color:color-mix(in oklab,var(--accent) 45%,transparent);background:color-mix(in oklab,var(--accent) 10%,transparent)}
+.sc-kind-model{color:var(--warning-text);border-color:color-mix(in oklab,var(--warning-text) 45%,transparent);background:color-mix(in oklab,var(--warning-text) 10%,transparent)}

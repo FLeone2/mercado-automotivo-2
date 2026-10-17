@@ -1,7 +1,7 @@
 [
  [
   "setGrain('monthly');},})})\n  , tab==='geography'&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending",
-  "setGrain('monthly');},})})\n  , tab!=='quality'&&jsxRuntime.jsx(MarketPulse,{filters:effectiveFilters})\n  , tab==='geography'&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending"
+  "setGrain('monthly');},})})\n  , !['quality','models'].includes(tab)&&jsxRuntime.jsx(MarketPulse,{filters:effectiveFilters})\n  , tab==='geography'&&mapReady&&jsxRuntime.jsx(PendingChartSnapshot,{pending:overviewMapQuery.pending"
  ],
  [
   "jsxRuntime.jsx(OverviewInsights,{model,period:titlePeriod}),\n",
@@ -26,5 +26,21 @@
  [
   "entry.criteria.tabId==='explore'?'Explorar':entry.criteria.tabId==='ranking'?'Ranking':'Visão geral'",
   "marketTabs.find(item=>item.id===entry.criteria.tabId)?.label??'Panorama'"
+ ],
+ [
+  "\n    , tab==='history'&&jsxRuntime.jsx(EvolutionInteractive,{key:evolutionView,view:evolutionView,filters:effectiveFilters,scope,manifest})",
+  "\n    , tab==='history'&&evolutionView==='executive'&&jsxRuntime.jsx(RhythmSeasonality,{filters:effectiveFilters,base:getBase(snapshot)})\n    , tab==='history'&&jsxRuntime.jsx(EvolutionInteractive,{key:evolutionView,view:evolutionView,filters:effectiveFilters,scope,manifest})"
+ ],
+ [
+  "jsxRuntime.jsx(CompetitiveReading,{filters:effectiveFilters,manifest,base:getBase(snapshot)}), ",
+  "jsxRuntime.jsx(CompetitiveReading,{filters:effectiveFilters,manifest,base:getBase(snapshot)}), jsxRuntime.jsx(ShareDecomposition,{filters:effectiveFilters,base:getBase(snapshot)}), jsxRuntime.jsx(ModelDuel,{filters:effectiveFilters,base:getBase(snapshot)}), "
+ ],
+ [
+  "tab==='technology'&&jsxRuntime.jsx(TechnologyView, { model: model, scope: scope, setFilter: setFilter,})",
+  "tab==='technology'&&jsxRuntime.jsx(TechnologyView, { model: model, scope: scope, setFilter: setFilter,})\n    , tab==='technology'&&jsxRuntime.jsx(ElectrificationHistory,{filters:effectiveFilters,base:getBase(snapshot)})"
+ ],
+ [
+  "jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})",
+  "jsxRuntime.jsx(TerritoryBrandMaps,{filters:effectiveFilters,manifest,base:getBase(snapshot)})\n   , tab==='geography'&&mapReady&&jsxRuntime.jsx(PenetrationMap,{filters:effectiveFilters,base:getBase(snapshot)})"
  ]
 ]

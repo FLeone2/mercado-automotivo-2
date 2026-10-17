@@ -17,7 +17,7 @@ for m in regional['municipalities']:
     rows.append([m['code'], m['name'], m['uf'], int(m['population'])])
     states[m['uf']] += int(m['population'])
     years.add(m.get('populationYear'))
-out = {'version': 1, 'year': sorted(y for y in years if y)[-1], 'source': 'IBGE, estimativas municipais de população (revisadas em data/scenarios/phase2_regional.json)',
+out = {'version': 1, 'year': sorted(y for y in years if y)[-1], 'source': 'IBGE, estimativas municipais de população',
        'states': dict(sorted(states.items())), 'columns': ['code', 'name', 'uf', 'population'], 'municipalities': rows}
 (root / 'data/reference').mkdir(exist_ok=True)
 (root / 'data/reference/population.json').write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':')))
