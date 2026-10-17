@@ -58,5 +58,13 @@
  [
   "else setState({result:data.result??null,pending:false,progress:null,error:data.error??null,key:activeRequest.current});};",
   "else setState({result:hideUnclassified(data.result??null),pending:false,progress:null,error:data.error??null,key:activeRequest.current});};"
+ ],
+ [
+  "children: [\"Não classificado: \"  , number(data.unknown), \" emplacamentos (\"  , disclosurePercent(data.unknownShare), \") omitidos apenas dos gráficos e legendas. Esses registros continuam nos totais, denominadores, dados de origem e exportações. Por isso, as classes visíveis podem somar menos de 100%.\"                           ",
+  "children: [\"Categorias não classificadas (menos de 0,1% dos registros) ficam fora dos gráficos, legendas e tabelas, mas continuam nos totais e denominadores. Por isso as classes visíveis podem somar um pouco menos de 100%.\""
+ ],
+ [
+  "\"Ver composição completa, incluindo não classificados\"",
+  "\"Ver composição completa por propulsão\""
  ]
 ]
